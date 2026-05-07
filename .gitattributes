@@ -1,0 +1,16 @@
+# Linguist language overrides for proper GitHub language statistics
+
+# Mark YAML files explicitly
+*.yaml linguist-language=YAML
+*.yml linguist-language=YAML
+
+# Mark shell scripts
+*.sh linguist-language=Shell
+
+# Mark documentation files so they don't count in language stats
+*.md linguist-documentation=true
+CHANGELOG.md linguist-documentation=true
+README.md linguist-documentation=true
+QUICKSTART.md linguist-documentation=true
+HELPERS.md linguist-documentation=true
+WIRING.md linguist-documentation=true
