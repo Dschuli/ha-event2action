@@ -79,7 +79,7 @@ cp homeassistant/automations.yaml /config/
 cp -r homeassistant/www/* /config/www/
 ```
 
-**Note:** The automation for RF433 and Zigbee button handling is now unified. Only one automation is needed—see `homeassistant/automations.yaml`.
+**Note:** RF433 and Zigbee button handling now uses the shared `event2action_bus` flow. See `homeassistant/automations.yaml` for the feeder automations and central bus handler.
 
 **Alternative**: If you prefer using the UI automation editor, see the updated instructions in [README.md](README.md#22-automations).
 
@@ -90,8 +90,8 @@ Restart Home Assistant.
 
 In Home Assistant:
 1. Settings → Devices & Services → Helpers → Create Helper
-2. **Text**: Name=`RF433 Last Event Store`, Max=255
-3. **Toggle**: Name=`RF433 Block Events`
+2. **Text**: Name=`Event2Action Last Event Store`, Max=255
+3. **Toggle**: Name=`Event2Action Block Events`
 
 ### 5. Add Dashboard Card (2 minutes)
 
@@ -101,11 +101,11 @@ In Home Assistant:
 
 2. In your dashboard, add card:
    ```yaml
-   type: custom:rf433-learning-card
+   type: custom:event2action-learning-card
    ```
-Set the dashboard view to **Panel** (single card view). The RF433 Learning Card is designed to be used as a panel view.
+Set the dashboard view to **Panel** (single card view). The Event2Action Learning Card is designed to be used as a panel view.
 
-> **Tip:** You can test the RF433 Learning Card and editor UI without hardware. See the [Editor Reference](RF433%20mapping%20editor%20reference.md#how-to-use) for a step-by-step guide to simulating RF events.
+> **Tip:** You can test the Event2Action Learning Card and editor UI without hardware. See the [Editor Reference](RF433%20mapping%20editor%20reference.md#how-to-use) for a step-by-step guide to simulating RF events.
 
 ## First RF Mapping (1 minute)
 

@@ -5,14 +5,14 @@
 # or include them as: script: !include scripts.yaml
 # ===============================================================
 
-# Temporary toggle helper - used for blocking RF events temporarily
+# Temporary toggle helper - used for blocking incoming events temporarily
 temporary_toggle:
   alias: Temporary Toggle
   description: Toggle an entity temporarily, then restore original state
   fields:
     toggle:
       description: Entity to toggle
-      example: input_boolean.rf433_block_events
+      example: input_boolean.event2action_block_events
     status:
       description: Status to set ('on' or 'off')
       example: "on"

@@ -1,26 +1,26 @@
-# RF433 Learning Card & Editor Documentation
+# Event2Action Learning Card & Editor Documentation
 
 
-> **Note**: This is the detailed reference for the RF433 learning interface and editor.  
-> For initial setup, see [QUICKSTART.md](QUICKSTART.md) or [README.md](README.md).  
+> **Note**: This is the detailed reference for the Event2Action learning interface and editor.
+> For initial setup, see [QUICKSTART.md](QUICKSTART.md) or [README.md](README.md).
 > For helper entity setup, see [HELPERS.md](HELPERS.md).
-> 
+>
 
 ## Overview
 
-The RF433 Learning Card is a custom Lovelace card for Home Assistant that provides an interactive interface for learning, mapping, and managing 433MHz RF remote control codes. It allows you to easily associate RF codes with Home Assistant entities and actions without manually editing configuration files.
+The Event2Action Learning Card is a custom Lovelace card for Home Assistant that provides an interactive interface for learning, mapping, and managing normalized event codes. It allows you to associate protocol/code pairs with Home Assistant entities and actions without manually editing configuration files.
 
 ## Components
 
 The system consists of three main components:
 
-### 1. **RF433 Learning Card** (`rf433-learning-card.js`)
+### 1. **Event2Action Learning Card** (`event2action-learning-card`)
 The main custom Lovelace card that provides the learning interface and workflow management.
 
-### 2. **RF433 Editor** (`rf433-editor.js`)
-A reusable editor component for creating and modifying RF code mappings.
+### 2. **Editor Component** (`rf433-editor.js`)
+A reusable editor component for creating and modifying event mappings.
 
-### 3. **RF433 Configuration** (`rf433-config.js`)
+### 3. **Configuration** (`rf433-config.js`)
 Configuration constants and entity references used throughout the system.
 
 ---
@@ -62,17 +62,17 @@ Configuration constants and entity references used throughout the system.
 
 ## Prerequisites
 
-Before using the RF433 Learning Card, ensure you have completed the initial setup:
+Before using the Event2Action Learning Card, ensure you have completed the initial setup:
 
 - **Quick Setup**: See [QUICKSTART.md](QUICKSTART.md) for a streamlined 5-minute setup guide
 - **Detailed Installation**: See [README.md](README.md) for complete installation instructions
-- **Helper Entities**: See [HELPERS.md](HELPERS.md) for creating required input_text and input_boolean helpers
+- **Helper Entities**: See [HELPERS.md](HELPERS.md) for creating required `input_text` and `input_boolean` helpers
 
 ---
 
 ## How to Use
 
-> **Tip:** You can test and explore the RF433 Learning Card and editor interface even if your 433MHz sniffer hardware is not yet running. To simulate an RF event:
+> **Tip:** You can test and explore the Event2Action Learning Card and editor interface even if your 433MHz sniffer hardware is not yet running. To simulate a normalized event:
 > 1. Open **Developer Tools → Events** in Home Assistant.
 > 2. In the **Event to fire** field, enter: `esphome.rf433`
 > 3. In the **Event data** field, enter (as valid JSON):
@@ -80,7 +80,7 @@ Before using the RF433 Learning Card, ensure you have completed the initial setu
 >    {"protocol": 1, "code": "111111111"}
 >    ```
 > 4. Click **Fire Event**.
-> This will trigger the learning card/editor as if a real RF code was received, allowing you to test mappings and UI behavior without hardware.
+> This will trigger the learning card/editor as if a real event was received, allowing you to test mappings and UI behavior without hardware.
 
 ### Learning New Codes
 
@@ -197,7 +197,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 ### Additional Editor Features
 
-- **Add Custom Common Parameters**: 
+- **Add Custom Common Parameters**:
   - You can add custom common parameters to the service data via the dropdown, as defined in your configuration (`rf433-config.js`).
   - These parameters are available for quick insertion and can be tailored to your use case.
 
@@ -224,7 +224,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 1. **RF Event Reception**
    - RF sniffer (ESP device) detects 433MHz signal
    - Event data sent to MQTT topic
-   - Home Assistant stores in `input_text.rf433_last_event_store`
+  - Home Assistant stores in `input_text.event2action_last_event_store` (legacy alias: `input_text.rf433_last_event_store`)
 
 2. **Card Detection**
    - Learning card monitors the input_text entity
@@ -244,15 +244,15 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 ### Storage Architecture
 
-- **Runtime Mapping**: `sensor.rf433_runtime_map`
+- **Runtime Mapping**: `sensor.event2action_runtime_map` (legacy alias: `sensor.rf433_runtime_map`)
   - Active mapping used by automations
   - Published via MQTT to `rf433/map`
 
-- **Session Backup**: `sensor.rf433_session_backup`
+- **Session Backup**: `sensor.event2action_session_backup` (legacy alias: `sensor.rf433_session_backup`)
   - Snapshot before learning session starts
   - Published via MQTT to `rf433/session_backup`
 
-- **Step Backup**: `sensor.rf433_step_backup`
+- **Step Backup**: `sensor.event2action_step_backup` (legacy alias: `sensor.rf433_step_backup`)
   - Snapshot before each save operation
   - Published via MQTT to `rf433/step_backup`
 
@@ -316,7 +316,7 @@ After modifying `rf433-config.js`, you must clear your browser cache to load the
 ### Editor Doesn't Open When Button is Pressed
 
 - **Check Learning Mode**: Ensure learning mode toggle is ON
-- **Check Event Store**: Verify `input_text.rf433_last_event_store` is receiving data
+- **Check Event Store**: Verify `input_text.event2action_last_event_store` is receiving data
 - **Check RF Sniffer**: Ensure ESP device is online and publishing to MQTT
 - **Check Timestamps**: Old events are ignored; press button again
 

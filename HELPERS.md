@@ -2,7 +2,7 @@
 
 Create these helper entities in Home Assistant before using the RF433 Learning Card.
 
-> For complete setup instructions, see [QUICKSTART.md](QUICKSTART.md) or [README.md](README.md).  
+> For complete setup instructions, see [QUICKSTART.md](QUICKSTART.md) or [README.md](README.md).
 > For detailed editor usage, see [RF433 mapping editor reference.md](RF433%20mapping%20editor%20reference.md).
 
 ## How to Create Helpers
@@ -39,12 +39,6 @@ Create these helper entities in Home Assistant before using the RF433 Learning C
 
 ## Verification
 
-After creating the helpers, verify they exist:
-
-1. Go to **Developer Tools** → **States**
-2. Search for:
-   - `input_text.rf433_last_event_store`
-   - `input_boolean.rf433_block_events`
 3. Both entities should be listed
 
 ## Alternative: YAML Configuration
@@ -55,10 +49,6 @@ If you prefer YAML configuration, add this to your `configuration.yaml`:
 input_text:
   rf433_last_event_store:
     name: RF433 Last Event Store
-    max: 255
-    icon: mdi:remote
-
-input_boolean:
   rf433_block_events:
     name: RF433 Block Events
     icon: mdi:cancel

@@ -84,8 +84,8 @@ Or copy the sensor definitions from `homeassistant/mqtt_sensors.yaml` to your ex
 
 #### 2.2 Automations
 
-**RF433 + Zigbee Button Mapping:**
-A single automation now handles both RF433 and Zigbee button events. This unified automation stores event data and executes mapped actions for both types of remotes, using the same mapping editor workflow. See `homeassistant/automations.yaml` for details and customization.
+**Event2Action Button Mapping:**
+RF433 and Zigbee button events are normalized by feeder automations, published to the shared `event2action_bus` event, and handled by one central action mapper. See `homeassistant/automations.yaml` for details and customization.
 
 **Method A: Direct File Include (Recommended)**
 
@@ -102,7 +102,7 @@ cp homeassistant/automations.yaml /config/
 
 1. Go to Settings → Automations & Scenes → Create Automation
 2. Click the ⋮ menu → Edit in YAML
-3. Copy the content from `homeassistant/automations.yaml` starting from `alias: RF433 + Zigbee Remotes Button Handler`
+3. Copy the content from `homeassistant/automations.yaml` starting from `alias: Event2Action RF433 Feeder`
 4. Save the automation
 
 
@@ -119,17 +119,17 @@ cp -r homeassistant/www/* /config/www/
 
 Create two helper entities in Home Assistant. See [HELPERS.md](HELPERS.md) for detailed instructions:
 
-- **Text Input**: `input_text.rf433_last_event_store` (stores RF event data)
-- **Toggle**: `input_boolean.rf433_block_events` (controls event blocking)
+- **Text Input**: `input_text.event2action_last_event_store` (stores normalized event data)
+- **Toggle**: `input_boolean.event2action_block_events` (controls event blocking)
 
 ### 4. Dashboard Card
 
-Add the RF433 Learning Card to your dashboard:
+Add the Event2Action Learning Card to your dashboard:
 
 ```yaml
-type: custom:rf433-learning-card
+type: custom:event2action-learning-card
 ```
-Set the dashboard view to **Panel** (single card view). The RF433 Learning Card is designed to be used as a panel view.
+Set the dashboard view to **Panel** (single card view). The Event2Action Learning Card is designed to be used as a panel view.
 
 You'll need to add it as a resource first:
 1. Go to Settings → Dashboards → Resources

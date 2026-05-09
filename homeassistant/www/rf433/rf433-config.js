@@ -1,5 +1,5 @@
 /* =========================================================
- * RF433 Learning Card Configuration
+ * Event2Action Learning Card Configuration
  * ========================================================= */
 
 // IMPORTANT: After making changes to this file, clear your browser cache and
@@ -66,15 +66,28 @@ export const DEFAULT_BLOCK_SECONDS = 30;	// Default seconds to block event actio
 export const LOG_LEVEL = 2;
 
 // MQTT Sensors and Topics
-// NOTE: If you change RUNTIME_MAPPING_SENSOR, you must also update the sensor name in the rf433_event_handling automation (automations.yaml)
-export const RUNTIME_MAPPING_SENSOR = "sensor.rf433_runtime_map";
-export const RUNTIME_MAPPING_TOPIC = "rf433/map";
-export const SESSION_BACKUP_SENSOR = "sensor.rf433_session_backup";
-export const SESSION_BACKUP_TOPIC = "rf433/session_backup";
-export const STEP_BACKUP_SENSOR = "sensor.rf433_step_backup";
-export const STEP_BACKUP_TOPIC = "rf433/step_backup";
+// NOTE: If you change the runtime mapping sensor, update the publishing automation too.
+export const EVENT_BUS_NAME = "event2action_bus";
+export const RUNTIME_MAPPING_SENSOR = "sensor.event2action_runtime_map";
+export const RUNTIME_MAPPING_TOPIC = "event2action/map";
+export const SESSION_BACKUP_SENSOR = "sensor.event2action_session_backup";
+export const SESSION_BACKUP_TOPIC = "event2action/session_backup";
+export const STEP_BACKUP_SENSOR = "sensor.event2action_step_backup";
+export const STEP_BACKUP_TOPIC = "event2action/step_backup";
+
+// Legacy RF433 aliases kept for compatibility with existing setups
+export const LEGACY_RUNTIME_MAPPING_SENSOR = "sensor.rf433_runtime_map";
+export const LEGACY_RUNTIME_MAPPING_TOPIC = "rf433/map";
+export const LEGACY_SESSION_BACKUP_SENSOR = "sensor.rf433_session_backup";
+export const LEGACY_SESSION_BACKUP_TOPIC = "rf433/session_backup";
+export const LEGACY_STEP_BACKUP_SENSOR = "sensor.rf433_step_backup";
+export const LEGACY_STEP_BACKUP_TOPIC = "rf433/step_backup";
 
 // Helper entities
-export const LASTEVENT_STORE = "input_text.rf433_last_event_store";
-export const BLOCKING_HELPER = "input_boolean.rf433_block_events";
+export const LASTEVENT_STORE = "input_text.event2action_last_event_store";
+export const BLOCKING_HELPER = "input_boolean.event2action_block_events";
+
+// Legacy helper aliases kept for compatibility with existing setups
+export const LEGACY_LASTEVENT_STORE = "input_text.rf433_last_event_store";
+export const LEGACY_BLOCKING_HELPER = "input_boolean.rf433_block_events";
 
