@@ -1,7 +1,7 @@
 # ===============================================================
 # Event2Action Automations for Home Assistant
 # ===============================================================
-# Method A: Add to configuration.yaml as: automation: !include automations.yaml or
+# Method A: Add to configuration.yaml as: automation: !include e2a_automations.yaml or
 #           add to your existing automations.yaml
 # Method B: Copy to UI automation editor (Settings → Automations)
 # ===============================================================

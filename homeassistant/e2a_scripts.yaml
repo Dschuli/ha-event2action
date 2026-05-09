@@ -2,7 +2,7 @@
 # Event2Action Scripts for Home Assistant
 # ===============================================================
 # Add these scripts to your configuration.yaml scripts section
-# or include them as: script: !include scripts.yaml
+# or include them as: script: !include e2a_scripts.yaml
 # ===============================================================
 
 # Temporary toggle helper - used for blocking incoming events temporarily

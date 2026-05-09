@@ -64,22 +64,20 @@ ESP32 GND    → LED GND
 ```yaml
 # In configuration.yaml, add:
 
-mqtt:
-  sensor: !include mqtt_sensors.yaml
-
-script: !include scripts.yaml
-automation: !include automations.yaml
+mqtt: !include e2a_mqtt_sensors.yaml
+script: !include e2a_scripts.yaml
+automation: !include e2a_automations.yaml
 ```
 
 Copy files:
 ```bash
-cp homeassistant/mqtt_sensors.yaml /config/
-cp homeassistant/scripts.yaml /config/
-cp homeassistant/automations.yaml /config/
+cp homeassistant/e2a_mqtt_sensors.yaml /config/
+cp homeassistant/e2a_scripts.yaml /config/
+cp homeassistant/e2a_automations.yaml /config/
 cp -r homeassistant/www/* /config/www/
 ```
 
-**Note:** RF433 and Zigbee button handling now uses the shared `event2action_bus` flow. See `homeassistant/automations.yaml` for the feeder automations and central bus handler.
+**Note:** RF433 and Zigbee button handling now uses the shared `event2action_bus` flow. See `homeassistant/e2a_automations.yaml` for the feeder automations and central bus handler.
 
 **Alternative**: If you prefer using the UI automation editor, see the updated instructions in [README.md](README.md#22-automations).
 

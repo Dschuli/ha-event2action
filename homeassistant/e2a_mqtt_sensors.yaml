@@ -3,10 +3,9 @@
 # ===============================================================
 # Add this content to your configuration.yaml mqtt section:
 #
-# mqtt:
-#   sensor: !include mqtt_sensors.yaml
+# mqtt: !include e2a_mqtt_sensors.yaml
 #
-# Or merge with your existing mqtt sensors configuration
+# Or merge with your existing mqtt configuration
 # ===============================================================
 
 sensor:

@@ -77,37 +77,37 @@ A comprehensive solution for integrating 433MHz RF remote controls with Home Ass
 Add to your `configuration.yaml`:
 ```yaml
 mqtt:
-  sensor: !include mqtt_sensors.yaml
+   !include e2a_mqtt_sensors.yaml
 ```
-Or copy the sensor definitions from `homeassistant/mqtt_sensors.yaml` to your existing MQTT configuration.
+Or copy the sensor definitions from `homeassistant/e2a_mqtt_sensors.yaml` to your existing MQTT configuration.
 
 
 #### 2.2 Automations
 
 **Event2Action Button Mapping:**
-RF433 and Zigbee button events are normalized by feeder automations, published to the shared `event2action_bus` event, and handled by one central action mapper. See `homeassistant/automations.yaml` for details and customization.
+RF433 and Zigbee button events are normalized by feeder automations, published to the shared `event2action_bus` event, and handled by one central action mapper. See `homeassistant/e2a_automations.yaml` for details and customization.
 
 **Method A: Direct File Include (Recommended)**
 
 Add to your `configuration.yaml`:
 ```yaml
-automation: !include automations.yaml
+automation: !include e2a_automations.yaml
 ```
 Then copy the file: (or add to your existing automations.yaml)
 ```bash
-cp homeassistant/automations.yaml /config/
+cp homeassistant/e2a_automations.yaml /config/
 ```
 
 **Method B: Using UI Automation Editor**
 
 1. Go to Settings → Automations & Scenes → Create Automation
 2. Click the ⋮ menu → Edit in YAML
-3. Copy the content from `homeassistant/automations.yaml` starting from `alias: Event2Action RF433 Feeder`
+3. Copy the content from `homeassistant/e2a_automations.yaml` starting from `alias: Event2Action RF433 Feeder`
 4. Save the automation
 
 
 #### 2.3 Scripts
-Copy the scripts from `homeassistant/scripts.yaml` to your scripts configuration.
+Copy the scripts from `homeassistant/e2a_scripts.yaml` to your scripts configuration.
 
 #### 2.4 Frontend Files
 Copy all files from `homeassistant/www/` to your `/config/www/` directory:
@@ -234,9 +234,9 @@ rf433-remote-ha-mapper/
 │   ├── rf_handlers.h            # RF handler
 │   └── secrets.yaml             # WiFi and API credentials
 ├── homeassistant/
-│   ├── automations.yaml         # RF event processing automation
-│   ├── mqtt_sensors.yaml        # MQTT sensor definitions
-│   ├── scripts.yaml             # Helper scripts
+│   ├── e2a_automations.yaml     # Event2Action feeder + bus automations
+│   ├── e2a_mqtt_sensors.yaml    # Event2Action MQTT sensor definitions
+│   ├── e2a_scripts.yaml         # Event2Action helper scripts
 │   └── www/
 │       ├── rf433/
 │       │   ├── rf433-learning-card.js    # Main card component

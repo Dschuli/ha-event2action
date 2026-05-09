@@ -62,8 +62,8 @@ The following docs were updated to describe the generic flow:
 - `QUICKSTART.md`
 - `HELPERS.md`
 - `RF433 mapping editor reference.md`
-- `homeassistant/scripts.yaml`
-- `homeassistant/mqtt_sensors.yaml`
+- `homeassistant/e2a_scripts.yaml`
+- `homeassistant/e2a_mqtt_sensors.yaml`
 
 ## Compatibility notes
 
@@ -71,10 +71,10 @@ The new setup preserves older RF433 identifiers as aliases where practical, so e
 
 ## Important files
 
-- `homeassistant/automations.yaml`
+- `homeassistant/e2a_automations.yaml`
 - `homeassistant/www/rf433/rf433-config.js`
 - `homeassistant/www/rf433/rf433-learning-card.js`
-- `homeassistant/mqtt_sensors.yaml`
+- `homeassistant/e2a_mqtt_sensors.yaml`
 - `HELPERS.md`
 - `README.md`
 - `QUICKSTART.md`
