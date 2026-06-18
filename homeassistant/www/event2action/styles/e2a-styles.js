@@ -1,20 +1,20 @@
 import { css } from "https://unpkg.com/lit@2/index.js?module";
 
-export const rf433Styles = css`
+export const e2aStyles = css`
 
   .content {
     display: flex;
     flex-direction: column;
-    column-gap: var(--rf-gap);
-    row-gap: var(--rf-gap-xxs);
+    column-gap: var(--e2a-gap);
+    row-gap: var(--e2a-gap-xxs);
   }
 
   ha-textfield {
-    --mdc-text-field-height: var(--rf-gap-lg);
+    --mdc-text-field-height: var(--e2a-gap-lg);
   }
 
   ha-textfield::part(field) {
-    border-radius: var(--rf-gap-md)  !important ;
+    border-radius: var(--e2a-gap-md)  !important ;
   }
 
   ha-textfield::part(container) {
@@ -27,13 +27,13 @@ export const rf433Styles = css`
   }
 
   .row {
-    margin-bottom:var(--rf-row-margin, 12px);
+    margin-bottom:var(--e2a-row-margin, 12px);
   }
 
 
   .buttons {
     display: flex;
-    gap: var(--rf-gap, 12px) ;
+    gap: var(--e2a-gap, 12px) ;
     margin-top: 16px;
   }
 `;

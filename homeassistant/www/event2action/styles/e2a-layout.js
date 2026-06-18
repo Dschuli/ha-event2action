@@ -1,50 +1,50 @@
 import { css } from "https://unpkg.com/lit@2/index.js?module";
 
-export const rf433Layout = css`
+export const e2aLayout = css`
   .row {
-    margin-bottom: var(--rf-gap-md);
+    margin-bottom: var(--e2a-gap-md);
   }
 
   .row-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--rf-gap-md);
-    margin-bottom: var(--rf-gap-md);
+    gap: var(--e2a-gap-md);
+    margin-bottom: var(--e2a-gap-md);
   }
 
   .row-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--rf-gap-md);
-    margin-bottom: var(--rf-gap-md);
+    gap: var(--e2a-gap-md);
+    margin-bottom: var(--e2a-gap-md);
   }
 
   .row-4 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: var(--rf-gap, 12px);
-    margin-bottom: var(--rf-row-margin, 12px);
+    gap: var(--e2a-gap, 12px);
+    margin-bottom: var(--e2a-row-margin, 12px);
   }
 
   .row-1-3 {
     display: grid;
     grid-template-columns: 1fr 3fr;
-    gap: var(--rf-gap, 12px);
-    margin-bottom: var(--rf-row-margin, 12px);
+    gap: var(--e2a-gap, 12px);
+    margin-bottom: var(--e2a-row-margin, 12px);
   }
 
   .row-1-2-1 {
     display: grid;
     grid-template-columns: 1fr 2fr 1fr;
-    gap: var(--rf-gap, 12px);
-    margin-bottom: var(--rf-row-margin, 12px);
+    gap: var(--e2a-gap, 12px);
+    margin-bottom: var(--e2a-row-margin, 12px);
   }
 
   .buttons {
     display: flex;
     justify-content: space-between;
-    gap: var(--rf-gap-md);
-    margin-top: var(--rf-gap-lg);
+    gap: var(--e2a-gap-md);
+    margin-top: var(--e2a-gap-lg);
   }
 
   .no_vert_margin {
@@ -59,7 +59,7 @@ export const rf433Layout = css`
   .flex_align {
     display: flex;
     align-items: center;
-    gap: var(--rf-gap, 12px);
+    gap: var(--e2a-gap, 12px);
   }
 
   /* Responsive breakpoints */

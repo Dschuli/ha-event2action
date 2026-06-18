@@ -2,15 +2,15 @@ import { LitElement, html, css } from "https://unpkg.com/lit@2/index.js?module";
 import { confirm } from "../mixins/confirm.js";
 import { BusyOverlayMixin } from "../mixins/busy_overlay_mixin.js";
 import { formatDateTime } from "../utils/format.js";
-import "./rf433-editor.js";
-import * as CONFIG from "./rf433-config.js";
-import { logger } from "../utils/rf433-utils.js";
-import { rf433Theme } from "./styles/rf433-theme.js";
-import { rf433Layout } from "./styles/rf433-layout.js";
-import { rf433Components } from "./styles/rf433-components.js";
-import { rf433Styles } from "./styles/rf433-styles.js";
+import "./e2a-editor.js";
+import * as CONFIG from "./e2a-config.js";
+import { logger } from "../utils/e2a-utils.js";
+import { e2aTheme } from "./styles/e2a-theme.js";
+import { e2aLayout } from "./styles/e2a-layout.js";
+import { e2aComponents } from "./styles/e2a-components.js";
+import { e2aStyles } from "./styles/e2a-styles.js";
 
-class RF433LearningCard extends BusyOverlayMixin(LitElement) {
+class E2ALearningCard extends BusyOverlayMixin(LitElement) {
 
   /* =========================================================
    * Reactive properties
@@ -119,40 +119,40 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
    * ========================================================= */
   async connectedCallback() {
     super.connectedCallback();
-    logger.debug("RF433LearningCard: connectedCallback called");
+    logger.debug("E2ALearningCard: connectedCallback called");
     this.setLastEventData();
     this._setSessionBackupHint();
 
     // Restore remaining block time from localStorage and re-block if needed
     if (CONFIG.AUTO_UNBLOCK && this.hass) {
       try {
-        const savedBlock = localStorage.getItem('rf433_block_time');
-        logger.debug("RF433LearningCard: Restoring block time from localStorage:", savedBlock);
+        const savedBlock = localStorage.getItem('e2a_block_time');
+        logger.debug("E2ALearningCard: Restoring block time from localStorage:", savedBlock);
         if (savedBlock) {
           const seconds = parseInt(savedBlock, 10);
           if (seconds > 0) {
             this.blockEvents(seconds);
-            logger.debug(`RF433LearningCard: Restored and re-blocked for ${seconds} seconds from localStorage`);
+            logger.debug(`E2ALearningCard: Restored and re-blocked for ${seconds} seconds from localStorage`);
           }
           // Remove after restoring to avoid repeated re-blocking
-          localStorage.removeItem('rf433_block_time');
+          localStorage.removeItem('e2a_block_time');
         }
       } catch (e) {
-        logger.warn("RF433LearningCard: Failed to restore block time from localStorage", e);
+        logger.warn("E2ALearningCard: Failed to restore block time from localStorage", e);
       }
     }
 
     // Restore learning mode from localStorage if available
-    const savedLearning = localStorage.getItem('rf433_learning_mode');
+    const savedLearning = localStorage.getItem('e2a_learning_mode');
     if (savedLearning !== null) {
       this._learningMode = savedLearning === 'true';
-      logger.debug("RF433LearningCard: Restored learning mode from localStorage:", this._learningMode);
+      logger.debug("E2ALearningCard: Restored learning mode from localStorage:", this._learningMode);
     }
 
     this._onBeforeUnload = () => {
       if (CONFIG.AUTO_UNBLOCK) {
         this.unBlockEvents(); // Unblock events on leaving the card
-        logger.debug("RF433LearningCard: unblocking due to page unload");
+        logger.debug("E2ALearningCard: unblocking due to page unload");
       }
     };
     window.addEventListener('beforeunload', this._onBeforeUnload);
@@ -178,33 +178,33 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    logger.debug("RF433LearningCard: disconnectedCallback called");
+    logger.debug("E2ALearningCard: disconnectedCallback called");
     if (this._unhandledRejectionHandler) {
       window.removeEventListener('unhandledrejection', this._unhandledRejectionHandler);
     }
     // Save learning mode state before disconnect
     try {
-      localStorage.setItem('rf433_learning_mode', this._learningMode ? 'true' : 'false');
-      logger.debug("RF433LearningCard: Saved learning mode to localStorage:", this._learningMode);
+      localStorage.setItem('e2a_learning_mode', this._learningMode ? 'true' : 'false');
+      logger.debug("E2ALearningCard: Saved learning mode to localStorage:", this._learningMode);
     } catch (e) {
-      logger.warn("RF433LearningCard: Failed to save learning mode to localStorage", e);
+      logger.warn("E2ALearningCard: Failed to save learning mode to localStorage", e);
     }
 
     if (CONFIG.AUTO_UNBLOCK) {
       // Save remaining block time to localStorage if blocking is active
       if (this.hass && this.hass.states[this._getBlockingHelperEntity()]?.state === "on") {
         try {
-          localStorage.setItem('rf433_block_time', String(this._blockCounter));
+          localStorage.setItem('e2a_block_time', String(this._blockCounter));
         } catch (e) {
-          logger.warn("RF433LearningCard: Failed to save block time to localStorage", e);
+          logger.warn("E2ALearningCard: Failed to save block time to localStorage", e);
         }
       } else {
         try {
-          localStorage.removeItem('rf433_block_time');
+          localStorage.removeItem('e2a_block_time');
         } catch (e) { }
       }
       this.unBlockEvents(); // Unblock events on leaving the card
-      logger.debug("RF433LearningCard: unblocking due to disconnect");
+      logger.debug("E2ALearningCard: unblocking due to disconnect");
     }
     if (this._blockCounterInterval) {
       clearInterval(this._blockCounterInterval);
@@ -216,10 +216,10 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
     // Save learning mode to localStorage whenever it changes
     if (changedProps.has("_learningMode")) {
       try {
-        localStorage.setItem('rf433_learning_mode', this._learningMode ? 'true' : 'false');
-        logger.debug("RF433LearningCard: Learning mode changed, saved to localStorage:", this._learningMode);
+        localStorage.setItem('e2a_learning_mode', this._learningMode ? 'true' : 'false');
+        logger.debug("E2ALearningCard: Learning mode changed, saved to localStorage:", this._learningMode);
       } catch (e) {
-        logger.warn("RF433LearningCard: Failed to save learning mode to localStorage", e);
+        logger.warn("E2ALearningCard: Failed to save learning mode to localStorage", e);
       }
     }
 
@@ -246,7 +246,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
 
     // 🔒 Only run if THIS entity actually changed
     if (storeState !== this._prevStoreState) {
-      logger.info("RF433LearningCard: Detected change in RF event store");
+      logger.info("E2ALearningCard: Detected change in RF event store");
       this._prevStoreState = storeState;
       if (!storeState || storeState === "unknown" || storeState === "unavailable") {
         this._resetLastEventData();
@@ -258,9 +258,9 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
           this._lastPressed = data.pressed || "";
           this._lastTs = new Date(data.ts).getTime();
           this._hasValidLastData = this._lastProto != null && this._lastCode != null && this._lastTs != null;
-          logger.debug("RF433LearningCard: last RF event =", this._lastProto, this._lastCode, this._lastPressed, this._lastTs);
+          logger.debug("E2ALearningCard: last RF event =", this._lastProto, this._lastCode, this._lastPressed, this._lastTs);
         } catch (e) {
-          logger.error("RF433LearningCard: Failed to parse RF event store data", e);
+          logger.error("E2ALearningCard: Failed to parse RF event store data", e);
           this._resetLastEventData();
         }
       }
@@ -278,12 +278,12 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
   _get_mapping_data(sensor_entity) {
     const stateObj = this.hass.states[sensor_entity];
     if (!stateObj) {
-      logger.warn("RF433LearningCard: mapping state object not found");
+      logger.warn("E2ALearningCard: mapping state object not found");
       return { lastupdated: 0, map: [] };
     }
     const lastupdated = stateObj.last_updated;
     const map = stateObj.attributes?.map || [];
-    logger.debug("RF433LearningCard: fetched mapping data with", map.length, "entries", lastupdated);
+    logger.debug("E2ALearningCard: fetched mapping data with", map.length, "entries", lastupdated);
     return { lastupdated, map };
   }
 
@@ -342,13 +342,13 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
    * Data Operations (MQTT & Backup Management)
    * ========================================================= */
   async _waitForSensorUpdate(entityId, sinceTs, timeoutMs = 5000, intervalMs = 200) {
-    logger.debug(`RF433LearningCard: waiting for ${entityId} to update since ${new Date(sinceTs).toISOString()}`);
+    logger.debug(`E2ALearningCard: waiting for ${entityId} to update since ${new Date(sinceTs).toISOString()}`);
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const st = this.hass.states[entityId];
       if (!st) return false;
       const updated = new Date(st.last_updated).getTime();
-      logger.debug(`RF433LearningCard: checking ${entityId}, last updated at ${new Date(updated).toISOString()}`);
+      logger.debug(`E2ALearningCard: checking ${entityId}, last updated at ${new Date(updated).toISOString()}`);
       if (updated > sinceTs) {
         return true;
       }
@@ -362,7 +362,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
       state: "loaded_" + new Date().toISOString(),
       map
     };
-    logger.debug("RF433LearningCard: publishing payload to", topic, payload);
+    logger.debug("E2ALearningCard: publishing payload to", topic, payload);
     // snapshot BEFORE publish
     const beforeTs = new Date(this.hass.states[sensor]?.last_updated ?? 0).getTime();
     // MQTT publish
@@ -397,12 +397,12 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
       return true;
     }
 
-    logger.info("RF433: creating " + type + " backup");
+    logger.info("E2A: creating " + type + " backup");
     this._setBusy(true, "Creating " + type + " backup…");
     const { map } = this._get_mapping_data(this._getRuntimeMappingEntity());
 
     if (map.length === 0 || (doDelete && map.length === 1)) {
-      logger.warn("RF433: current mapping is empty");
+      logger.warn("E2A: current mapping is empty");
       const ok = await confirm("Current mapping is empty.\n\nDo you want to skip backup of empty mapping?", { yes: "Proceed", no: "Cancel" });
       this._setBusy(false);
       if (!ok) return true;
@@ -414,7 +414,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
         backup_topic,
         map
       );
-      logger.info("RF433: " + type + " backup created");
+      logger.info("E2A: " + type + " backup created");
       const lastupdated = this.hass.states[this._getRuntimeMappingEntity()]?.last_updated;
       this._undoDisabled = false;
       this._undoLabel = "Undo " + typeText;
@@ -422,7 +422,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
         ", dated " + formatDateTime(this.hass, new Date(lastupdated));
       return true;
     } catch (err) {
-      logger.error("RF433: failed to create " + type + " backup", err);
+      logger.error("E2A: failed to create " + type + " backup", err);
       const ok = await confirm(
         "Failed to create " + type + " backup.\nCheck Home Assistant logs for details." +
         (type === 'step' ? "\nDo you want to proceed with saving the mapping anyway?" : ""),
@@ -440,7 +440,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
    * Map Manipulation
    * ========================================================= */
   _build_new_map(oldMap, newMap) {
-    logger.debug("RF433LearningCard: Building new map", newMap, oldMap);
+    logger.debug("E2ALearningCard: Building new map", newMap, oldMap);
     const result = [];
     const seen = new Set();
 
@@ -499,7 +499,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
    * Learning Mode & Editor Management
    * ========================================================= */
   async toggleLearningMode(e) {
-    logger.info("RF433LearningCard: toggling learning mode to", e.target.checked);
+    logger.info("E2ALearningCard: toggling learning mode to", e.target.checked);
     if (!this.hass) return;
 
     this._undoDisabled = true;
@@ -527,11 +527,11 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
 
   // Enter edit mode for current last event
   _start_EditMode(proto, code, pressed) {
-    logger.info("RF433LearningCard: starting editor for ", proto, code);
+    logger.info("E2ALearningCard: starting editor for ", proto, code);
     this._lockedPcc = { proto: proto, code: code };
     this._editorStartedAt = Date.now();
     const stateObj = this.hass.states[this._getRuntimeMappingEntity()];
-    logger.debug("RF433LearningCard: map stateObj =", stateObj);
+    logger.debug("E2ALearningCard: map stateObj =", stateObj);
     if (!stateObj) return;
     const map = Array.isArray(stateObj.attributes?.map) ? stateObj.attributes.map : [];
     const existing = this.findMapping(map, proto, code);
@@ -570,9 +570,9 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
    * Event Handlers (User Actions)
    * ========================================================= */
   async blockEvents(seconds) {
-    logger.debug("RF433LearningCard: blockEvents called with", seconds);
+    logger.debug("E2ALearningCard: blockEvents called with", seconds);
     if (!this.hass || !seconds || seconds <= 0) return;
-    logger.info(`RF433LearningCard: Blocking RF events for ${seconds} seconds`);
+    logger.info(`E2ALearningCard: Blocking RF events for ${seconds} seconds`);
     // Start counter immediately
     this._blockCounter = seconds;
     if (this._blockCounterInterval) clearInterval(this._blockCounterInterval);
@@ -599,7 +599,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   async unBlockEvents() {
-    logger.debug("RF433LearningCard: unBlockEvents called");
+    logger.debug("E2ALearningCard: unBlockEvents called");
     if (!this.hass) return;
     try {
       await this.hass.callService("script", "temporary_toggle", {
@@ -676,7 +676,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
           );
           await confirm("Map imported successfully.", { yes: "Ok", no: "" });
         } catch (err) {
-          logger.error("RF433: failed to import map", err);
+          logger.error("E2A: failed to import map", err);
           await confirm(
             "Failed to import mapping.\nCheck Home Assistant logs for details.",
             { yes: "Ok", no: "" }
@@ -685,7 +685,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
           this._setBusy(false);
         }
       } catch (err) {
-        logger.error("RF433: failed to read import file", err);
+        logger.error("E2A: failed to read import file", err);
         await confirm("Failed to read file. Make sure it's a valid JSON file.", { yes: "Ok", no: "" });
       }
     };
@@ -713,16 +713,16 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   async _onEditorDelete() {
-    logger.info("RF433LearningCard: Deleting mapping for", this._lockedPcc);
+    logger.info("E2ALearningCard: Deleting mapping for", this._lockedPcc);
     if (!this._lockedPcc) return;
     const confirmDelete = await confirm("Are you sure you want to delete this mapping?", { yes: "Delete", no: "Cancel" });
     if (!confirmDelete) return;
-    logger.debug("RF433LearningCard: Deleting mapping for", this._lockedPcc);
+    logger.debug("E2ALearningCard: Deleting mapping for", this._lockedPcc);
     this._saveMap(true);
   }
 
   async _saveMap(doDelete = false) {
-    logger.info("RF433LearningCard: Saving edited mapping", doDelete);
+    logger.info("E2ALearningCard: Saving edited mapping", doDelete);
     if (!this._lockedPcc) return;
 
     const stateObj = this.hass.states[this._getRuntimeMappingEntity()];
@@ -741,7 +741,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
     this._setBusy(true, doDelete ? "Deleting mapping…" : "Saving mapping…");
     const map = stateObj.attributes?.map || [];
     const newMap = doDelete ? this._delete_from_map(map, this._lockedPcc) : this._build_new_map(map, [this._draft]);
-    logger.debug("RF433LearningCard: built new map with", newMap.length, "entries", newMap);
+    logger.debug("E2ALearningCard: built new map with", newMap.length, "entries", newMap);
 
     try {
       await this._publish_map(
@@ -749,9 +749,9 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
         this._getRuntimeMappingTopic(),
         newMap
       );
-      logger.info("RF433: Change saved to mapping");
+      logger.info("E2A: Change saved to mapping");
     } catch (err) {
-      logger.error("RF433: failed to save mapping", err);
+      logger.error("E2A: failed to save mapping", err);
       await confirm(
         "Failed to save mapping.\nCheck Home Assistant logs for details.",
         { yes: "Ok", no: "" }
@@ -767,12 +767,12 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   async _onUndo() {
-    logger.info("RF433LearningCard: Undoing");
+    logger.info("E2ALearningCard: Undoing");
     if (this._learningMode) {
       // Restore step backup
       const lastupdated = this.hass.states[this._getStepBackupEntity()]?.last_updated;
       if (!lastupdated) {
-        logger.warn("RF433LearningCard: no step backup available");
+        logger.warn("E2ALearningCard: no step backup available");
         this._setBusy(false);
         return;
       }
@@ -787,13 +787,13 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
           this._getRuntimeMappingTopic(),
           this.hass.states[this._getStepBackupEntity()]?.attributes?.map || []
         );
-        logger.info("RF433LearningCard: session undo completed");
+        logger.info("E2ALearningCard: session undo completed");
         await confirm("Mapping before last save restored.", { yes: "Ok", no: "" });
 
         this._undoHint = "Last saving already undone.";
         this._undoDisabled = true;
       } catch (err) {
-        logger.error("RF433LearningCard: failed to undo session", err);
+        logger.error("E2ALearningCard: failed to undo session", err);
         await confirm(
           "Failed to undo last save.\nCheck Home Assistant logs for details.",
           { yes: "Ok", no: "" }
@@ -805,7 +805,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
       // Restore session backup
       const lastupdated = this.hass.states[this._getSessionBackupEntity()]?.last_updated;
       if (!lastupdated) {
-        logger.warn("RF433LearningCard: no session backup available");
+        logger.warn("E2ALearningCard: no session backup available");
         return;
       }
       const ok = await confirm("Are you sure you want to undo the last learning session?" +
@@ -819,11 +819,11 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
           this._getRuntimeMappingTopic(),
           this.hass.states[this._getSessionBackupEntity()]?.attributes?.map || []
         );
-        logger.info("RF433LearningCard: session undo completed");
+        logger.info("E2ALearningCard: session undo completed");
         await confirm("Mapping restored to state before last learning session.", { yes: "Ok", no: "" });
         this._setSessionBackupHint();
       } catch (err) {
-        logger.error("RF433LearningCard: failed to undo session", err);
+        logger.error("E2ALearningCard: failed to undo session", err);
         await confirm(
           "Failed to undo session.\nCheck Home Assistant logs for details.",
           { yes: "Ok", no: "" }
@@ -851,7 +851,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
 
     return html`
       <input
-        class="rf-fallback-switch"
+        class="e2a-fallback-switch"
         type="checkbox"
         .checked=${checked}
         ?disabled=${disabled}
@@ -912,7 +912,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
               ${this._undoLabel}
             </ha-button>
           </div>
-          <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--rf-border-radius);">
+          <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--e2a-border-radius);">
             <ha-button class=${blocked ? "danger" : ""}
               @click=${() => blocked ? this.unBlockEvents() : this.blockEvents(this._blockSeconds)}
               title=${blocked ? "Terminate event blocking" : "Temporarily block event2action automation from acting on incoming events"}>
@@ -927,7 +927,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
               @input=${(e) => { this._blockSeconds = Number(e.target.value); }}
             ></ha-textfield>
           </div>
-          <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--rf-border-radius);">
+          <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--e2a-border-radius);">
             <ha-button
               @click=${this._onExportMap}
               title="Export current mapping to JSON file"
@@ -957,7 +957,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
             Code ${this._lockedPcc.code}
           </p>
 
-          <rf433-editor
+          <e2a-editor
             .hass=${this.hass}
             .draft=${this._draft}
             .collection=${map}
@@ -967,7 +967,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
             @save=${this._onEditorSave}
             @cancel=${this._onEditorCancel}
             @delete=${this._onEditorDelete}>
-          </rf433-editor>
+          </e2a-editor>
 
           <hr />
 
@@ -1019,10 +1019,10 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
    * ========================================================= */
   static styles = [
     super.styles ?? [],
-    rf433Theme,
-    rf433Components,
-    rf433Layout,
-    rf433Styles,
+    e2aTheme,
+    e2aComponents,
+    e2aLayout,
+    e2aStyles,
     css`
     :host {
       position: relative;
@@ -1034,7 +1034,7 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
         margin: 0;
       }
     }
-    .rf-fallback-switch {
+    .e2a-fallback-switch {
       width: 40px;
       height: 20px;
       accent-color: var(--primary-color);
@@ -1045,12 +1045,12 @@ class RF433LearningCard extends BusyOverlayMixin(LitElement) {
 /* =========================================================
  * Card registration
  * ========================================================= */
-if (!customElements.get("rf433-learning-card")) {
-  customElements.define("rf433-learning-card", RF433LearningCard);
+if (!customElements.get("e2a-learning-card")) {
+  customElements.define("e2a-learning-card", E2ALearningCard);
 }
 
 if (!customElements.get("event2action-learning-card")) {
-  customElements.define("event2action-learning-card", RF433LearningCard);
+  customElements.define("event2action-learning-card", E2ALearningCard);
 }
 
 window.customCards = window.customCards || [];

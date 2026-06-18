@@ -4,28 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- Initial release of 433MHz Remote to Home Assistant integration
-- ESPHome-based RF sniffer with ESP32 support
-- Learning mode interface for mapping RF signals
-- Visual editor for creating and editing RF mappings
-- Session and step-level backup with undo functionality
-- Import/Export functionality for RF mappings
-- Event blocking for temporary suspension of RF actions
-- Status LED feedback for WiFi connection
-- Comprehensive documentation and wiring guide
-- Hardware configuration separation for easy customization
+### Changed
+
+- Project scope narrowed to the Event2Action editor, runtime, MQTT storage, helper scripts, and feeder automations.
+- RF433 handling now assumes an external source emits `esphome.rf433` events.
+- ZHA button handling is normalized through the shared `event2action_bus` flow.
+
+### Removed
+
+- Bundled RF433 firmware directory.
+- Optional helper examples that are outside the current Event2Action scope.
+- Hardware setup instructions from the core project documentation.
 
 ### Features
-- Debouncing to prevent duplicate signal processing
-- Support for multiple entity domains (switch, light, cover, script)
-- MQTT-based state management
-- Configurable logging levels
-- Responsive UI with modern styling
 
-## Project Structure Created - January 2026
+- Learning mode interface for mapping event codes.
+- Visual editor for creating and editing mappings.
+- Session and step-level backup with undo functionality.
+- Import/export functionality for mappings.
+- Event blocking for temporary suspension of actions.
+- MQTT-based state management.
+- Configurable logging levels.
+- Responsive Lovelace UI.
 
-Initial project setup with:
-- `/esphome` - ESP32 firmware configuration
-- `/homeassistant` - Home Assistant integration files
-- Documentation files (README.md, HELPERS.md, WIRING.md)
+## Project Structure
+
+- `/homeassistant` - Home Assistant automations, scripts, MQTT sensors, and frontend files
+- Markdown documentation for setup, helpers, and editor usage

@@ -1,75 +1,17 @@
 # Quick Start Guide
 
-Get up and running with 433MHz RF control in Home Assistant in just a few steps!
+Set up the Event2Action editor and runtime in Home Assistant.
 
-## Prerequisites Checklist
+## Prerequisites
 
 - [ ] Home Assistant installed and running
-- [ ] MQTT broker configured (Mosquitto add-on recommended)
-- [ ] ESPHome add-on installed
-- [ ] ESP32 board and 433MHz receiver module ready
-- [ ] Basic soldering skills (for hardware connections) or crimping skills (if working with custom made jumper cables)
+- [ ] MQTT broker configured
+- [ ] An RF433 source that emits `esphome.rf433`events, or Zigbee devices using ZHA (emitting `zha` event ), or another event source with a corresponding feeder automation
 
-## 5-Minute Setup
-### 1. Flash the ESP32 (5 minutes)
+## 1. Install Home Assistant Files
 
-**Note:** The RF handler logic is now split into two files: `rf_handlers.h` (header) and `rf-handler.c` (implementation). Make sure to copy both files if you are customizing or extending RF handling logic.
+Copy the files into your Home Assistant config directory:
 
-**Option A: Using ESPHome Add-on (simplest)**:
-```bash
-# In ESPHome dashboard
-1. Copy esphome/433mhz-sniffer.yaml to your ESPHome folder
-2. Copy esphome/hardware-config.yaml to your ESPHome folder
-3. Copy esphome/rf_handlers.h and esphome/rf-handler.c to your ESPHome folder (if customizing RF logic)
-4. Edit esphome/secrets.yaml with your WiFi credentials
-5. Click "Install" and choose "Plug into this computer"
-6. Wait for compilation and upload
-```
-
-**Option B: Using ESPHome CLI (faster compilation)**:
-
-For better performance, especially on Raspberry Pi, install ESPHome on a more powerful computer:
-
-```bash
-# Install ESPHome (see https://esphome.io/guides/installing_esphome.html)
-
-# Copy files to a working directory (e.g., ~/esphome/)
-1. Copy esphome/433mhz-sniffer.yaml to your working directory
-2. Copy esphome/hardware-config.yaml to your working directory
-3. Copy esphome/rf_handlers.h to your working directory
-4. Edit esphome/secrets.yaml with your WiFi credentials
-
-# Compile and flash:
-esphome run 433mhz-sniffer.yaml
-```
-
-### 2. Wire the Hardware (5 minutes)
-
-**Minimal setup (receiver only)**:
-```
-ESP32 3.3V  →  RF Receiver VCC
-ESP32 GND   →  RF Receiver GND
-ESP32 GPIO13 → RF Receiver DATA
-```
-
-**With status LED**:
-```
-ESP32 GPIO12 → LED DATA
-ESP32 5V     → LED VCC
-ESP32 GND    → LED GND
-```
-
-### 3. Configure Home Assistant (10 minutes)
-
-```yaml
-# In configuration.yaml, add:
-
-mqtt: !include e2a_mqtt_sensors.yaml
-script: !include e2a_scripts.yaml
-automation: !include e2a_automations.yaml
-```
-
-Copy files:
 ```bash
 cp homeassistant/e2a_mqtt_sensors.yaml /config/
 cp homeassistant/e2a_scripts.yaml /config/
@@ -77,97 +19,110 @@ cp homeassistant/e2a_automations.yaml /config/
 cp -r homeassistant/www/* /config/www/
 ```
 
-**Note:** RF433 and Zigbee button handling now uses the shared `event2action_bus` flow. See `homeassistant/e2a_automations.yaml` for the feeder automations and central bus handler.
+Add these includes to `configuration.yaml`:
 
-**Alternative**: If you prefer using the UI automation editor, see the updated instructions in [README.md](README.md#22-automations).
+```yaml
+mqtt: !include e2a_mqtt_sensors.yaml
+script: !include e2a_scripts.yaml
+automation: !include e2a_automations.yaml
+```
 
 Restart Home Assistant.
 
-**Note:** To ensure reliable operation with fast remotes, a 500ms delay is automatically added after any toggle action in the automation. This prevents rapid repeated toggles from being processed too quickly.
-### 4. Create Helper Entities (2 minutes)
+## 2. Create Helper Entities
 
-In Home Assistant:
-1. Settings → Devices & Services → Helpers → Create Helper
-2. **Text**: Name=`Event2Action Last Event Store`, Max=255
-3. **Toggle**: Name=`Event2Action Block Events`
+In Home Assistant, go to Settings -> Devices & Services -> Helpers -> Create Helper.
 
-### 5. Add Dashboard Card (2 minutes)
+Create:
 
-1. Settings → Dashboards → Resources → Add Resource:
-   - URL: `/local/rf433/rf433-learning-card.js`
-   - Type: JavaScript Module
+- Text helper named `Event2Action Last Event Store`
+- Toggle helper named `Event2Action Block Events`
 
-2. In your dashboard, add card:
-   ```yaml
-   type: custom:event2action-learning-card
-   ```
-Set the dashboard view to **Panel** (single card view). The Event2Action Learning Card is designed to be used as a panel view.
+The expected entity IDs are:
 
-> **Tip:** You can test the Event2Action Learning Card and editor UI without hardware. See the [Editor Reference](RF433%20mapping%20editor%20reference.md#how-to-use) for a step-by-step guide to simulating RF events.
+- `input_text.event2action_last_event_store`
+- `input_boolean.event2action_block_events`
 
-## First RF Mapping (1 minute)
+See [HELPERS.md](HELPERS.md) if Home Assistant generates different entity IDs.
 
-1. **Enable Learning Mode** in the card
-2. **Press an RF remote button**
-3. **Fill in the form**:
-   - Entity: Select the device to control
-   - Service: Choose action (turn_on, turn_off, toggle)
-4. **Click Save**
-5. **Test**: Press the same RF button → Your device should respond!
+## 3. Add the Dashboard Card
 
-> For detailed editor features, backup/restore, and advanced options, see [RF433 mapping editor reference.md](RF433%20mapping%20editor%20reference.md)
+Add this resource in Settings -> Dashboards -> Resources:
 
-## Verify It's Working
-
-### Check ESP32 Connection
-- Status LED should be **green** (WiFi connected)
-- In Home Assistant: Check ESPHome integration shows device online
-
-### Check RF Reception
-```bash
-# In ESPHome logs:
-esphome logs 433mhz-sniffer.yaml
-
-# Press RF button, you should see:
-# [remote_receiver:xxx] Received RC Switch: protocol=X code='XXXXXX'
+```yaml
+url: /local/event2action/e2a-learning-card.js
+type: module
 ```
 
-### Check Home Assistant Events
-Developer Tools → Events → Listen to Events:
-- Event type: `esphome.rf433`
-- Press RF button
-- You should see event data with protocol and code
+Add this card to a dashboard:
+
+```yaml
+type: custom:event2action-learning-card
+```
+
+Use a panel view for the cleanest layout.
+
+## 4. Verify the Event Flow
+
+Open Developer Tools -> Events.
+
+Listen to:
+
+```text
+event2action_bus
+```
+
+Then fire this test event:
+
+```text
+esphome.rf433
+```
+
+With event data:
+
+```json
+{
+  "protocol": 1,
+  "code": "111111111",
+  "pressed": "test"
+}
+```
+
+If the feeder is working, an `event2action_bus` event appears and `input_text.event2action_last_event_store` updates.
+
+## 5. Create Your First Mapping
+
+1. Enable learning mode in the card.
+2. Trigger an RF433 or ZHA button event.
+3. Select the target entity.
+4. Select the service, such as `light.toggle` or `switch.turn_on`.
+5. Save the mapping.
+6. Disable learning mode and trigger the event again.
+
+Optional example: if you later install a separate `ha-dimmer-control-by-handheld` project that provides `script.dimmer_control`, you can map a button to `script.turn_on` with target `script.dimmer_control` and service data like `{"light_entity":"light.living_room","steps":5,"bounce_at_top":false}`.
 
 ## Troubleshooting
 
-**No RF signals received**:
-- Check wiring (especially DATA pin to GPIO13)
-- Verify antenna length (~17.3cm straight wire)
-- Move closer to transmitter
-- Check ESPHome logs for errors
+**No bus event appears**
 
-**Learning mode not working**:
-- Verify helper entities exist (check Developer Tools → States)
-- Check browser console for errors (F12)
-- Ensure MQTT sensors are created
+- Confirm `e2a_automations.yaml` is included.
+- Confirm the feeder automation is enabled.
+- Confirm the incoming event is named `esphome.rf433` or `zha_event`.
 
-**Card not showing**:
-- Verify resource is added to dashboard
-- Clear browser cache
-- Check `/config/www/rf433/` files exist
+**Card not showing**
 
-## Next Steps
+- Verify `/config/www/event2action/e2a-learning-card.js` exists.
+- Verify the dashboard resource URL is `/local/event2action/e2a-learning-card.js`.
+- Clear the browser cache.
 
-- Map all your RF remote buttons
-- Create automation groups (all lights, all blinds)
-- Export your mappings for backup
-- Share your configuration with others!
+**Mapping does not execute**
 
-## Get Help
+- Check `sensor.event2action_runtime_map`.
+- Make sure `input_boolean.event2action_block_events` is off.
+- Check the automation trace for `Event2Action Bus Handler`.
 
-- Quick start: This guide
-- Full documentation: [README.md](README.md)
-- Editor & advanced features: [RF433 mapping editor reference.md](RF433%20mapping%20editor%20reference.md)
-- Hardware guide: [WIRING.md](WIRING.md)
+## More Detail
+
+- Full overview: [README.md](README.md)
+- Editor reference: [e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md)
 - Helper setup: [HELPERS.md](HELPERS.md)
-- Issues: [GitHub Issues](https://github.com/Dschuli/rf433-remote-ha-mapper/issues)

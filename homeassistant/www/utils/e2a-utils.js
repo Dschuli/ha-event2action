@@ -1,8 +1,8 @@
 /* =========================================================
- * RF433 Utility Functions
+ * E2A Utility Functions
  * ========================================================= */
 
-import { LOG_LEVEL } from '../rf433/rf433-config.js';
+import { LOG_LEVEL } from '../event2action/e2a-config.js';
 
 /**
  * Logging utility that respects the configured LOG_LEVEL

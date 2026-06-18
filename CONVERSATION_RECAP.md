@@ -4,7 +4,7 @@ This file captures the main points from the recent discussion about generalizing
 
 ## What you asked for
 
-You wanted the workspace’s two main parts — the RF433 sniffer and the learning card — to be generalized so one central automation handles events with at least:
+You wanted the workspace’s main learning flow to be generalized so one central automation handles events with at least:
 - `proto`
 - `code`
 
@@ -37,7 +37,7 @@ Behavior now includes:
 - generic UI labels like “Event2Action Learning”
 - generic export filename: `event2action_map_*.json`
 - generic custom card registration: `event2action-learning-card`
-- old `rf433-learning-card` tag still supported as an alias
+- `event2action-learning-card` is the supported Lovelace card tag
 - generic helper/entity resolution with fallback to legacy RF433 IDs
 
 ### 3. Automation split into feeders + bus handler
@@ -61,7 +61,7 @@ The following docs were updated to describe the generic flow:
 - `README.md`
 - `QUICKSTART.md`
 - `HELPERS.md`
-- `RF433 mapping editor reference.md`
+- `e2a-mapping-editor-reference.md`
 - `homeassistant/e2a_scripts.yaml`
 - `homeassistant/e2a_mqtt_sensors.yaml`
 
@@ -72,13 +72,13 @@ The new setup preserves older RF433 identifiers as aliases where practical, so e
 ## Important files
 
 - `homeassistant/e2a_automations.yaml`
-- `homeassistant/www/rf433/rf433-config.js`
-- `homeassistant/www/rf433/rf433-learning-card.js`
+- `homeassistant/www/event2action/e2a-config.js`
+- `homeassistant/www/event2action/e2a-learning-card.js`
 - `homeassistant/e2a_mqtt_sensors.yaml`
 - `HELPERS.md`
 - `README.md`
 - `QUICKSTART.md`
-- `RF433 mapping editor reference.md`
+- `e2a-mapping-editor-reference.md`
 
 ## Current status
 
@@ -87,7 +87,5 @@ The code and YAML edits were validated cleanly after the refactor. The workspace
 ## If you want to continue
 
 Possible next steps:
-- fully rename remaining RF433 internal symbols and log messages
 - add a dedicated ZHA example feeder section to the docs
-- create a small sample dashboard card snippet for the new `event2action-learning-card`
-- prune legacy compatibility once migration is complete
+- prune legacy RF433 compatibility once migration is complete

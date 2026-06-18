@@ -1,12 +1,12 @@
 import { LitElement, html, css } from "https://unpkg.com/lit@2/index.js?module";
-import { ENTITY_DOMAIN_LIST, CUSTOM_COMMON_SERVICE_DATA_KEYS, PREFILL_SERVICE_DATA } from "./rf433-config.js";
-import { logger } from "../utils/rf433-utils.js";
-import { rf433Theme } from "./styles/rf433-theme.js";
-import { rf433Layout } from "./styles/rf433-layout.js";
-import { rf433Components } from "./styles/rf433-components.js";
-import { rf433Styles } from "./styles/rf433-styles.js";
+import { ENTITY_DOMAIN_LIST, CUSTOM_COMMON_SERVICE_DATA_KEYS, PREFILL_SERVICE_DATA } from "./e2a-config.js";
+import { logger } from "../utils/e2a-utils.js";
+import { e2aTheme } from "./styles/e2a-theme.js";
+import { e2aLayout } from "./styles/e2a-layout.js";
+import { e2aComponents } from "./styles/e2a-components.js";
+import { e2aStyles } from "./styles/e2a-styles.js";
 
-export class RF433Editor extends LitElement {
+export class E2AEditor extends LitElement {
   static properties = {
     hass: { attribute: false },
     draft: { type: Object },
@@ -68,7 +68,7 @@ export class RF433Editor extends LitElement {
       const entities = await Promise.race([fetchEntities, timeout]);
       this._cachedEntities = entities;
       this._entityCacheError = null;
-      logger.info(`RF433Editor: Cached ${entities.length} entities from ${this._entityDomainList.length} domains`);
+      logger.info(`E2AEditor: Cached ${entities.length} entities from ${this._entityDomainList.length} domains`);
       this.requestUpdate(); // Force re-render with cached entities
     } catch (err) {
       if (err.message === 'Timeout') {
@@ -103,15 +103,15 @@ export class RF433Editor extends LitElement {
   }
 
   static styles = [
-    rf433Theme,
-    rf433Components,
-    rf433Layout,
-    rf433Styles,
+    e2aTheme,
+    e2aComponents,
+    e2aLayout,
+    e2aStyles,
     css`
       .highlight {
         color: var(--primary-color);
       }
-      .rf-fallback-switch {
+      .e2a-fallback-switch {
         width: 40px;
         height: 20px;
         accent-color: var(--primary-color);
@@ -132,7 +132,7 @@ export class RF433Editor extends LitElement {
 
     return html`
       <input
-        class="rf-fallback-switch"
+        class="e2a-fallback-switch"
         type="checkbox"
         .checked=${checked}
         ?disabled=${disabled}
@@ -147,10 +147,10 @@ export class RF433Editor extends LitElement {
 
   updated(changedProps) {
     if (changedProps.has("draft")) {
-      logger.debug("RF433Editor: draft changed, existing:", this.existing, "baseline exists:", !!this._baseline);
+      logger.debug("E2AEditor: draft changed, existing:", this.existing, "baseline exists:", !!this._baseline);
       // Initialize baseline and working state only on first draft assignment
       if (!this._baseline) {
-        logger.debug("RF433Editor: initializing baseline and working state from draft:", this.draft);
+        logger.debug("E2AEditor: initializing baseline and working state from draft:", this.draft);
         this._baseline = structuredClone(this.draft);
         this._working = structuredClone(this.draft);
       }
@@ -401,7 +401,7 @@ export class RF433Editor extends LitElement {
         try {
           serviceData = JSON.parse(prefill);
         } catch (e) {
-          logger.error(`RF433Editor: Failed to parse prefill data for ${entity}|${value}`, e);
+          logger.error(`E2AEditor: Failed to parse prefill data for ${entity}|${value}`, e);
         }
       }
 
@@ -599,7 +599,7 @@ export class RF433Editor extends LitElement {
         try {
           return JSON.stringify(this._working?.service_data ?? {}, null, 2);
         } catch (e) {
-          logger.error("RF433Editor: Failed to stringify service_data", e);
+          logger.error("E2AEditor: Failed to stringify service_data", e);
           return '{}';
         }
       })()}
@@ -800,7 +800,7 @@ export class RF433Editor extends LitElement {
   }
 }
 
-if (!customElements.get("rf433-editor")) {
-  customElements.define("rf433-editor", RF433Editor);
+if (!customElements.get("e2a-editor")) {
+  customElements.define("e2a-editor", E2AEditor);
 }
 

@@ -17,10 +17,10 @@ The system consists of three main components:
 ### 1. **Event2Action Learning Card** (`event2action-learning-card`)
 The main custom Lovelace card that provides the learning interface and workflow management.
 
-### 2. **Editor Component** (`rf433-editor.js`)
+### 2. **Editor Component** (`e2a-editor.js`)
 A reusable editor component for creating and modifying event mappings.
 
-### 3. **Configuration** (`rf433-config.js`)
+### 3. **Configuration** (`e2a-config.js`)
 Configuration constants and entity references used throughout the system.
 
 ---
@@ -55,7 +55,7 @@ Configuration constants and entity references used throughout the system.
 - **Import Map**: Upload and restore mappings from a JSON file
 
 ### Event Blocking
-- **Temporary Block**: Prevent RF433 automations from triggering during configuration
+- **Temporary Block**: Prevent mapped Event2Action automations from triggering during configuration
 - **Configurable Duration**: Set how many seconds to block events
 
 ---
@@ -72,7 +72,7 @@ Before using the Event2Action Learning Card, ensure you have completed the initi
 
 ## How to Use
 
-> **Tip:** You can test and explore the Event2Action Learning Card and editor interface even if your 433MHz sniffer hardware is not yet running. To simulate a normalized event:
+> **Tip:** You can test and explore the Event2Action Learning Card and editor interface even if your RF433 event source is not running. To simulate a normalized event:
 > 1. Open **Developer Tools → Events** in Home Assistant.
 > 2. In the **Event to fire** field, enter: `esphome.rf433`
 > 3. In the **Event data** field, enter (as valid JSON):
@@ -141,7 +141,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 **Export**
 1. Click "Export Map"
-2. A JSON file downloads with timestamp (e.g., `rf433_map_2026-01-13T14-30-00.json`)
+2. A JSON file downloads with timestamp (e.g., `event2action_map_2026-01-13T14-30-00.json`)
 3. Store safely as a backup
 
 **Import**
@@ -159,7 +159,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 - **Entity**: The Home Assistant entity to control
   - Supports: `switch`, `light`, `cover`, `script`
-  - Additional domains can be configured in rf433-config.js
+  - Additional domains can be configured in e2a-config.js
   - Uses entity picker with domain filtering
 
 - **Service**: The service to call on the entity
@@ -175,7 +175,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
     - **Light**: brightness, rgb_color, color_temp, transition
     - **Cover**: position
     - **Media Player**: volume_level
-    Note: The currently hardcoded list of common parameters by service can be customized/extended via `rf433-config.js`
+    Note: The currently hardcoded list of common parameters by service can be customized/extended via `e2a-config.js`
 
 - **Active**: Enable/disable the mapping (default: ON)
 
@@ -198,7 +198,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 ### Additional Editor Features
 
 - **Add Custom Common Parameters**:
-  - You can add custom common parameters to the service data via the dropdown, as defined in your configuration (`rf433-config.js`).
+  - You can add custom common parameters to the service data via the dropdown, as defined in your configuration (`e2a-config.js`).
   - These parameters are available for quick insertion and can be tailored to your use case.
 
 - **Preset Service Data for Entity/Service**:
@@ -222,7 +222,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 ### Data Flow
 
 1. **RF Event Reception**
-   - RF sniffer (ESP device) detects 433MHz signal
+   - External RF433 event source fires an `esphome.rf433` event
    - Event data sent to MQTT topic
   - Home Assistant stores in `input_text.event2action_last_event_store` (legacy alias: `input_text.rf433_last_event_store`)
 
@@ -246,15 +246,15 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 - **Runtime Mapping**: `sensor.event2action_runtime_map` (legacy alias: `sensor.rf433_runtime_map`)
   - Active mapping used by automations
-  - Published via MQTT to `rf433/map`
+  - Published via MQTT to `event2action/map`
 
 - **Session Backup**: `sensor.event2action_session_backup` (legacy alias: `sensor.rf433_session_backup`)
   - Snapshot before learning session starts
-  - Published via MQTT to `rf433/session_backup`
+  - Published via MQTT to `event2action/session_backup`
 
 - **Step Backup**: `sensor.event2action_step_backup` (legacy alias: `sensor.rf433_step_backup`)
   - Snapshot before each save operation
-  - Published via MQTT to `rf433/step_backup`
+  - Published via MQTT to `event2action/step_backup`
 
 ### Mapping Structure
 
@@ -283,7 +283,7 @@ Each mapping entry contains:
 
 ### Logging
 
-Adjust logging level in `rf433-config.js`:
+Adjust logging level in `e2a-config.js`:
 
 ```javascript
 export const LOG_LEVEL = 2;
@@ -297,7 +297,7 @@ export const LOG_LEVEL = 2;
 
 ### Event Blocking Duration
 
-Default blocking duration is 30 seconds, configurable in `rf433-config.js`:
+Default blocking duration is 30 seconds, configurable in `e2a-config.js`:
 
 ```javascript
 export const DEFAULT_BLOCK_SECONDS = 30;
@@ -305,7 +305,7 @@ export const DEFAULT_BLOCK_SECONDS = 30;
 
 ### Applying Configuration Changes
 
-After modifying `rf433-config.js`, you must clear your browser cache to load the updated code:
+After modifying `e2a-config.js`, you must clear your browser cache to load the updated code:
 - **Desktop browsers**: Clear cache (Ctrl+Shift+Delete / Cmd+Shift+Delete) or hard refresh (Ctrl+F5 / Cmd+Shift+R)
 - **Home Assistant companion app**: Clear app cache in app settings
 
@@ -317,7 +317,7 @@ After modifying `rf433-config.js`, you must clear your browser cache to load the
 
 - **Check Learning Mode**: Ensure learning mode toggle is ON
 - **Check Event Store**: Verify `input_text.event2action_last_event_store` is receiving data
-- **Check RF Sniffer**: Ensure ESP device is online and publishing to MQTT
+- **Check Event Source**: Ensure your RF433 source is firing fresh `esphome.rf433` events
 - **Check Timestamps**: Old events are ignored; press button again
 
 ### Save Button Stays Disabled
@@ -328,7 +328,7 @@ After modifying `rf433-config.js`, you must clear your browser cache to load the
 ### Mapping Doesn't Work After Save
 
 - **Check Sensor Update**: Wait a few seconds for the command-line sensor to refresh
-- **Check Automation**: Verify your RF433 automation is active
+- **Check Automation**: Verify the Event2Action bus handler automation is active
 - **Check Entity**: Ensure the target entity exists and is accessible
 - **Check Service**: Verify the service is valid for the entity domain
 
@@ -416,6 +416,20 @@ script:
 
 Then map to: `script.bedroom_night_mode`
 
+### Optional Dimmer Script Mapping
+
+If you install a separate dimmer-control project, for example `ha-dimmer-control-by-handheld`, you can map handheld button events to its script. A typical mapping would call `script.turn_on`, target `script.dimmer_control`, and pass script variables as service data:
+
+```json
+{
+  "light_entity": "light.bedroom",
+  "steps": 5,
+  "bounce_at_top": false
+}
+```
+
+The dimmer script itself is intentionally external to Event2Action.
+
 > **Note on Script Service Data**: When calling scripts, you can provide service data with or without the `variables` wrapper. Both formats are supported:
 > ```json
 > {"my_var": "value"}
@@ -431,18 +445,16 @@ Then map to: `script.bedroom_night_mode`
 ## File Structure
 
 ```
-www/rf433/
-├── rf433-learning-card.js    # Main Lovelace card component
-├── rf433-editor.js            # Editor component
-├── rf433-config.js            # Configuration constants
-├── rf_map_input.json          # Mapping data file
-├── RF433 Things to Remember.txt  # Setup notes
-├── README.md                  # This documentation
+www/event2action/
+├── e2a-learning-card.js    # Main Lovelace card component
+├── e2a-editor.js            # Editor component
+├── e2a-config.js            # Configuration constants
+├── e2a-test-map-input.json    # Sample mapping data
 ├── styles/
-│   ├── rf433-theme.js         # Theme variables
-│   ├── rf433-layout.js        # Layout styles
-│   ├── rf433-components.js    # Component styles
-│   └── rf433-styles.js        # Common styles
+│   ├── e2a-theme.js         # Theme variables
+│   ├── e2a-layout.js        # Layout styles
+│   ├── e2a-components.js    # Component styles
+│   └── e2a-styles.js        # Common styles
 └── ...
 ```
 
@@ -453,7 +465,7 @@ www/rf433/
 - **Lit**: Web components library (loaded from CDN)
 - **Home Assistant**: Frontend components (`ha-button`, `ha-selector`, etc.)
 - **MQTT Integration**: For publishing mapping updates
-- **Custom Scripts**: Helper script for temporarily blocking RF433 event triggers
+- **Custom Scripts**: Helper script for temporarily blocking mapped event actions
 
 ---
 

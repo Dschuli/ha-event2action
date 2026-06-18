@@ -1,6 +1,6 @@
 import { css } from "https://unpkg.com/lit@2/index.js?module";
 
-export const rf433Components = css`
+export const e2aComponents = css`
 
   ha-textfield {
     --mdc-text-field-height: 36px;
@@ -20,9 +20,9 @@ export const rf433Components = css`
   }
 
   ha-button.danger {
-    --wa-color-brand-fill-loud: var(--rf-accent);
-    --wa-color-brand-border-loud: var(--rf-accent);
-    --button-color-fill-loud-hover:  var(--rf-accent-hover);
+    --wa-color-brand-fill-loud: var(--e2a-accent);
+    --wa-color-brand-border-loud: var(--e2a-accent);
+    --button-color-fill-loud-hover:  var(--e2a-accent-hover);
     --wa-color-brand-on-loud: #fff;
   }
 `;
