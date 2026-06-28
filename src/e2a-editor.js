@@ -32,6 +32,8 @@ export class E2AEditor extends LitElement {
     this._showEntitySelector = false;
     this._showCommonParamSelector = true;
     this._mergedServiceDataKeys = this._computeMergedServiceDataKeys();
+    this._sdCursorStart = 0;
+    this._sdCursorEnd = 0;
 
     // Add global unhandled rejection handler for WebSocket errors
     this._boundRejectionHandler = this._handleUnhandledRejection.bind(this);
@@ -347,14 +349,53 @@ export class E2AEditor extends LitElement {
     return PREFILL_SERVICE_DATA[searchKey];
   }
 
+  async _resolveNativeInputElement(field) {
+    if (!field) return null;
+    let ni = field.inputElement || field._inputElement;
+    if (ni && typeof ni.then === 'function') {
+      try { ni = await ni; } catch { ni = null; }
+    }
+    if (ni) return ni;
+    const nested = field.renderRoot?.querySelector('ha-textfield, mwc-textfield');
+    if (nested) {
+      let nni = nested.inputElement || nested._inputElement;
+      if (nni && typeof nni.then === 'function') {
+        try { nni = await nni; } catch { nni = null; }
+      }
+      if (nni) return nni;
+      return nested.renderRoot?.querySelector('textarea, input') || null;
+    }
+    return field.renderRoot?.querySelector('textarea, input') || null;
+  }
+
   _clearServiceDataValidation() {
-    const serviceDataField = this.shadowRoot?.querySelector('ha-textfield[label="Service data (JSON, optional)"]');
+    const serviceDataField = this.shadowRoot?.querySelector('#service-data-input');
     if (serviceDataField) {
-      serviceDataField.invalid = false;
-      serviceDataField.validationMessage = "";
-      serviceDataField.helperPersistent = false;
+      if ('invalid' in serviceDataField) serviceDataField.invalid = false;
+      if ('validationMessage' in serviceDataField) serviceDataField.validationMessage = "";
+      if ('helperPersistent' in serviceDataField) serviceDataField.helperPersistent = false;
+
+      const nativeInput = serviceDataField.inputElement
+        || serviceDataField._inputElement
+        || serviceDataField.renderRoot?.querySelector('textarea, input');
+      nativeInput?.setCustomValidity?.("");
+      nativeInput?.reportValidity?.();
       serviceDataField.reportValidity?.();
     }
+  }
+
+  _setServiceDataValidation(field, invalid, message = "") {
+    if (!field) return;
+    if ('invalid' in field) field.invalid = invalid;
+    if ('validationMessage' in field) field.validationMessage = message;
+    if ('helperPersistent' in field) field.helperPersistent = invalid;
+
+    const nativeInput = field.inputElement
+      || field._inputElement
+      || field.renderRoot?.querySelector('textarea, input');
+    nativeInput?.setCustomValidity?.(message);
+    field.reportValidity?.();
+    nativeInput?.reportValidity?.();
   }
 
   // ========================================
@@ -566,10 +607,10 @@ export class E2AEditor extends LitElement {
 
             <ha-formfield label="Active">
               ${this._renderSwitch(
-                this._working?.active ?? true,
-                this.disabled,
-                e => this._change("active", e.target.checked)
-              )}
+          this._working?.active ?? true,
+          this.disabled,
+          e => this._change("active", e.target.checked)
+        )}
             </ha-formfield>
           </div>
           <div class="row-1-2-1">
@@ -593,47 +634,39 @@ export class E2AEditor extends LitElement {
               ?disabled=${this.disabled}
               @value-changed=${e => this._change("service", e.detail.value)}
             ></ha-selector>
-            <ha-textfield
+            <ha-input
+              id="service-data-input"
               label="Service data (JSON, optional)"
               .value=${(() => {
         try {
-          return JSON.stringify(this._working?.service_data ?? {}, null, 2);
+          return JSON.stringify(this._working?.service_data ?? {});
         } catch (e) {
           logger.error("E2AEditor: Failed to stringify service_data", e);
           return '{}';
         }
       })()}
               ?disabled=${this.disabled}
-              .multiline=${true}
-              .rows=${3}
+              @mouseup=${e => { const t = e.composedPath?.()?.[0]; if (t?.selectionStart !== undefined) { this._sdCursorStart = t.selectionStart; this._sdCursorEnd = t.selectionEnd; } }}
+              @keyup=${e => { const t = e.composedPath?.()?.[0]; if (t?.selectionStart !== undefined) { this._sdCursorStart = t.selectionStart; this._sdCursorEnd = t.selectionEnd; } }}
               @input=${e => {
         const val = e.target.value;
         // Wenn Feld komplett leer ist oder nur aus zwei Anführungszeichen besteht, service_data auf {} setzen, aber das Textfeld leer lassen
         if (val.trim() === "" || val.trim() === "\"\"") {
           this._change("service_data", {});
           e.target.value = "";
-          e.target.invalid = false;
-          e.target.validationMessage = "";
-          e.target.helperPersistent = true;
-          e.target.reportValidity?.();
+          this._setServiceDataValidation(e.target, false, "");
           return;
         }
         try {
           const parsed = JSON.parse(val);
           this._change("service_data", parsed);
-          e.target.invalid = false;
-          e.target.validationMessage = "";
-          e.target.helperPersistent = true;
-          e.target.reportValidity?.();
+          this._setServiceDataValidation(e.target, false, "");
         } catch {
-          e.target.invalid = true;
-          e.target.validationMessage = "Invalid JSON";
-          e.target.helperPersistent = true;
-          e.target.reportValidity?.();
+          this._setServiceDataValidation(e.target, true, "Invalid JSON");
         }
       }}
             >
-            </ha-textfield>
+            </ha-input>
             ${this._getCommonServiceDataKeys().length > 1 && this._showCommonParamSelector ? html`
               <div style="display: flex; flex-direction: column; width: 100%;">
                 <ha-selector
@@ -683,23 +716,24 @@ export class E2AEditor extends LitElement {
             entity: { domain: this._entityDomainList }
           }}
                       @value-changed=${e => {
-            const selected = e.detail.value;
+            const raw = e.detail?.value;
+            const selected = typeof raw === 'string' ? raw : (raw?.entity_id || raw?.value || '');
+            logger.debug('E2AEditor: entity picker value-changed', { raw, selected, cursor: this._sdCursorStart });
             if (selected) {
-              // Insert selected entity_id at cursor position in the service data text field
-              const textField = this.shadowRoot?.querySelector('ha-textfield[label="Service data (JSON, optional)"]');
-              // Try to get the native input/textarea inside ha-textfield
-              const nativeInput = textField && (textField.inputElement || textField._inputElement || textField.renderRoot?.querySelector('textarea, input'));
-              if (nativeInput) {
-                const start = nativeInput.selectionStart || 0;
-                const end = nativeInput.selectionEnd || 0;
-                const value = nativeInput.value || '';
-                const { newValue, newCursor } = this._smartInsertEntityId(value, start, end, selected);
-                nativeInput.value = newValue;
-                nativeInput.selectionStart = nativeInput.selectionEnd = newCursor;
-                nativeInput.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
-                nativeInput.focus();
+              // Use _smartInsertEntityId with saved cursor position on the current JSON string
+              const currentJson = (() => {
+                try { return JSON.stringify(this._working?.service_data ?? {}); } catch { return '{}'; }
+              })();
+              const { newValue } = this._smartInsertEntityId(currentJson, this._sdCursorStart, this._sdCursorEnd, selected);
+              try {
+                const parsed = JSON.parse(newValue);
+                this._change('service_data', parsed);
+              } catch {
+                // Fallback: set entity_id key directly
+                const currentData = { ...(this._working?.service_data ?? {}) };
+                currentData.entity_id = selected;
+                this._change('service_data', currentData);
               }
-              // Ensure the selector closes after insertion
               setTimeout(() => { this._showEntitySelector = false; }, 0);
             } else {
               this._showEntitySelector = false;

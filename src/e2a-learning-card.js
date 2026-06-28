@@ -59,6 +59,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     this._prevStoreState = null;
     this._busy = false;
     this._undoDisabled = false;
+    this._publishSeq = 0;
 
     this._resetLastEventData();
     this._blockCounter = 0;
@@ -358,8 +359,9 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   async _publish_map(sensor, topic, map) {
+    const publishStamp = `${Date.now()}-${++this._publishSeq}`;
     const payload = {
-      state: "loaded_" + new Date().toISOString(),
+      state: `loaded_${publishStamp}`,
       map
     };
     logger.debug("E2ALearningCard: publishing payload to", topic, payload);
@@ -918,14 +920,14 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
               title=${blocked ? "Terminate event blocking" : "Temporarily block event2action automation from acting on incoming events"}>
               ${blocked ? `Unblock - ${this._blockCounter} sec` : "Block events"}
             </ha-button>
-            <ha-textfield
+            <ha-input
               label="seconds"
               type="number"
               min="1"
               style="width: 100px;"
               .value=${String(this._blockSeconds)}
               @input=${(e) => { this._blockSeconds = Number(e.target.value); }}
-            ></ha-textfield>
+            ></ha-input>
           </div>
           <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--e2a-border-radius);">
             <ha-button
@@ -1049,8 +1051,11 @@ if (!customElements.get("e2a-learning-card")) {
   customElements.define("e2a-learning-card", E2ALearningCard);
 }
 
+// A separate subclass is required because the Web Components spec does not
+// allow the same constructor to be registered under two different tag names.
+class Event2ActionLearningCard extends E2ALearningCard { }
 if (!customElements.get("event2action-learning-card")) {
-  customElements.define("event2action-learning-card", E2ALearningCard);
+  customElements.define("event2action-learning-card", Event2ActionLearningCard);
 }
 
 window.customCards = window.customCards || [];

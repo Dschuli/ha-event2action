@@ -1,0 +1,242 @@
+input_boolean:
+  event2action_block_events:
+    name: Event2Action Block Events
+    icon: mdi:progress-clock
+
+input_text:
+  event2action_last_event_store:
+    name: Event2Action Last Event Store
+    icon: mdi:history
+    min: 0
+    max: 255
+    mode: text
+
+
+automation:
+  - id: event2action_rf433_feeder
+    alias: Event2Action RF433 Feeder
+    description: Normalizes esphome.rf433 events and forwards them to the generic event2action
+      bus.
+    triggers:
+    - event_type: esphome.rf433
+      trigger: event
+    actions:
+    - event: event2action_bus
+      event_data:
+        source: rf433
+        origin_event_type: esphome.rf433
+        proto: '{{ trigger.event.data.protocol | default(trigger.event.data.proto, true)
+          | default(''unknown'') }}'
+        code: '{{ trigger.event.data.code | default(''0'') }}'
+        pressed: '{{ trigger.event.data.pressed | default('''') }}'
+        raw: '{{ trigger.event.data }}'
+        ts: '{{ now().isoformat() }}'
+    mode: single
+  - id: event2action_zha_feeder
+    alias: Event2Action ZHA Feeder
+    description: Normalizes zha_event payloads and forwards them to the generic event2action
+      bus.
+    triggers:
+    - event_type: zha_event
+      trigger: event
+    variables:
+      zha_command_code: "{{\n  (\n    trigger.event.data.device_ieee.replace(':','')[-6:]
+        | int(base=16)\n  ) * 1000 +\n  (trigger.event.data.endpoint_id | int) * 100
+        +\n  (\n    1 if trigger.event.data.command == 'remote_button_short_press' else\n
+        \   2 if trigger.event.data.command == 'remote_button_double_press' else\n    3
+        if trigger.event.data.command == 'remote_button_long_press' else\n    0\n  )\n}}"
+      zha_pressed: '{{ trigger.event.data.endpoint_id }}- {%- if trigger.event.data.command
+        == ''remote_button_short_press'' -%} press {%- elif trigger.event.data.command
+        == ''remote_button_double_press'' -%} dblPress {%- elif trigger.event.data.command
+        == ''remote_button_long_press'' -%} longPress {%- else -%} unknown {%- endif
+        %}'
+    actions:
+    - event: event2action_bus
+      event_data:
+        source: zha
+        origin_event_type: zha_event
+        proto: zha
+        code: '{{ zha_command_code }}'
+        pressed: '{{ zha_pressed | trim }}'
+        raw: '{{ trigger.event.data }}'
+        ts: '{{ now().isoformat() }}'
+    mode: queued
+    max: 10
+  - id: event2action_bus_handler
+    alias: Event2Action Bus Handler
+    description: Stores normalized event2action_bus events and executes the mapped Home
+      Assistant action.
+    triggers:
+    - event_type: event2action_bus
+      trigger: event
+    actions:
+    - variables:
+        runtime_map_entity: sensor.event2action_runtime_map
+        blocking_helper_entity: input_boolean.event2action_block_events
+        event_type: '{{ trigger.event.event_type }}'
+        proto: '{{ trigger.event.data.proto | default(''unknown'') }}'
+        code: '{{ trigger.event.data.code | default(''0'') }}'
+        pressed: '{{ trigger.event.data.pressed | default('''') }}'
+        event2action_map: '{{ state_attr(''sensor.event2action_runtime_map'', ''map'')
+          | default([], true) }}'
+        event2action_sensor_missing: '{{ states(''sensor.event2action_runtime_map'')
+          in [''unknown'', ''unavailable'', ''none'', ''''] }}'
+    - target:
+        entity_id: input_text.event2action_last_event_store
+      data:
+        value: "{{ {\n  'proto': proto | string,\n  'code': code | string,\n  'pressed':
+          pressed | string,\n  'ts': now().isoformat()\n} | tojson }}"
+      continue_on_error: true
+      action: input_text.set_value
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ event2action_sensor_missing }}'
+        sequence:
+        - data:
+            level: error
+            logger: event2action
+            message: 'Event2Action map sensor missing! sensor={{ runtime_map_entity
+              }}
+
+              '
+          action: system_log.write
+      - conditions:
+        - condition: template
+          value_template: '{{ event2action_map | count > 0 }}'
+        sequence:
+        - variables:
+            entry: "{% set match = event2action_map\n  | selectattr('proto', 'equalto',
+              proto | string)\n  | selectattr('code', 'equalto', code | string)\n  |
+              list %}\n{{ match[0] if match | length > 0 else none }}\n"
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ states(blocking_helper_entity) == ''on'' }}'
+            sequence: []
+          - conditions:
+            - condition: template
+              value_template: '{{ entry is not none and entry.active is true }}'
+            sequence:
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ entry.service.startswith(''script.'') }}'
+                sequence:
+                - target:
+                    entity_id: '{{ entry.entity }}'
+                  data: "{% set sdata = entry.service_data | default({}) %} {% if 'variables'
+                    in sdata %}\n  {{ sdata }}\n{% else %}\n  {{ {'variables': sdata}
+                    }}\n{% endif %}"
+                  continue_on_error: true
+                  action: '{{ entry.service }}'
+              default:
+              - target:
+                  entity_id: '{{ entry.entity }}'
+                data: '{{ entry.service_data | default({}) }}'
+                continue_on_error: true
+                action: '{{ entry.service }}'
+              - choose:
+                - conditions:
+                  - condition: template
+                    value_template: '{{ entry.service in [''toggle'', ''homeassistant.toggle'']
+                      or entry.service.endswith(''.toggle'') }}'
+                  sequence:
+                  - delay:
+                      milliseconds: 500
+      default: []
+    mode: queued
+    max: 10
+
+script:
+  temporary_toggle:
+    alias: Temporary Toggle
+    mode: restart
+    fields:
+      toggle:
+        description: input_boolean to be toggled
+      status:
+        description: 'Target status: on/off/toggle'
+      seconds:
+        description: Duration in seconds (0 = indefinite)
+    sequence:
+    - variables:
+        toggle_entity: '{{ toggle }}'
+        target_state: '{{ (status | default(''on'')) | lower }}'
+        toggle_seconds: '{{ seconds | default(10) | int }}'
+        initial_state: '{{ states(toggle_entity) }}'
+    - condition: template
+      value_template: "{{ toggle_entity.startswith('input_boolean.')\n   and target_state
+        in ['on','off','toggle']\n   and toggle_seconds >= 0 }}\n"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ target_state == ''on'' }}'
+        sequence:
+        - target:
+            entity_id: '{{ toggle_entity }}'
+          action: input_boolean.turn_on
+      - conditions:
+        - condition: template
+          value_template: '{{ target_state == ''off'' }}'
+        sequence:
+        - target:
+            entity_id: '{{ toggle_entity }}'
+          action: input_boolean.turn_off
+      - conditions:
+        - condition: template
+          value_template: '{{ target_state == ''toggle'' }}'
+        sequence:
+        - target:
+            entity_id: '{{ toggle_entity }}'
+          action: input_boolean.toggle
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ toggle_seconds > 0 }}'
+        sequence:
+        - delay:
+            seconds: '{{ toggle_seconds }}'
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ target_state == ''toggle'' }}'
+            sequence:
+            - target:
+                entity_id: '{{ toggle_entity }}'
+              action: input_boolean.turn_{{ initial_state }}
+          - conditions:
+            - condition: template
+              value_template: '{{ target_state == ''on'' }}'
+            sequence:
+            - target:
+                entity_id: '{{ toggle_entity }}'
+              action: input_boolean.turn_off
+          - conditions:
+            - condition: template
+              value_template: '{{ target_state == ''off'' }}'
+            sequence:
+            - target:
+                entity_id: '{{ toggle_entity }}'
+              action: input_boolean.turn_on
+    description: ''
+
+mqtt:
+  sensor:
+    - name: "Event2Action Runtime Map"
+      unique_id: "event2action_runtime_map"
+      state_topic: "event2action/map"
+      json_attributes_topic: "event2action/map"
+      value_template: "{{ value_json.state }}"
+
+    - name: "Event2Action Session Backup"
+      unique_id: "event2action_session_backup"
+      state_topic: "event2action/session_backup"
+      json_attributes_topic: "event2action/session_backup"
+      value_template: "{{ value_json.state }}"
+
+    - name: "Event2Action Step Backup"
+      unique_id: "event2action_step_backup"
+      state_topic: "event2action/step_backup"
+      json_attributes_topic: "event2action/step_backup"
+      value_template: "{{ value_json.state }}"
