@@ -1,10 +1,10 @@
-import { LitElement, html, css } from "https://unpkg.com/lit@2/index.js?module";
-import { confirm } from "../mixins/confirm.js";
-import { BusyOverlayMixin } from "../mixins/busy_overlay_mixin.js";
-import { formatDateTime } from "../utils/format.js";
+import { LitElement, html, css } from "lit";
+import { confirm } from "./mixins/confirm.js";
+import { BusyOverlayMixin } from "./mixins/busy_overlay_mixin.js";
+import { formatDateTime } from "./utils/format.js";
 import "./e2a-editor.js";
 import * as CONFIG from "./e2a-config.js";
-import { logger } from "../utils/e2a-utils.js";
+import { logger } from "./utils/e2a-utils.js";
 import { e2aTheme } from "./styles/e2a-theme.js";
 import { e2aLayout } from "./styles/e2a-layout.js";
 import { e2aComponents } from "./styles/e2a-components.js";

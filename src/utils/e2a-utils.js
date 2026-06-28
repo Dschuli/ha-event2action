@@ -2,7 +2,7 @@
  * E2A Utility Functions
  * ========================================================= */
 
-import { LOG_LEVEL } from '../event2action/e2a-config.js';
+import { LOG_LEVEL } from "../e2a-config.js";
 
 /**
  * Logging utility that respects the configured LOG_LEVEL

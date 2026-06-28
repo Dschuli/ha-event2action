@@ -1,4 +1,4 @@
-import { html, css } from "https://unpkg.com/lit@2/index.js?module";
+import { html, css } from "lit";
 
 export const BusyOverlayMixin = (superClass) =>
   class extends superClass {

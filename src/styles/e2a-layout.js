@@ -1,4 +1,4 @@
-import { css } from "https://unpkg.com/lit@2/index.js?module";
+import { css } from "lit";
 
 export const e2aLayout = css`
   .row {
