@@ -31,21 +31,13 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     super();
 
     this._runtime_mapping_sensor = CONFIG.RUNTIME_MAPPING_SENSOR;
-    this._legacy_runtime_mapping_sensor = CONFIG.LEGACY_RUNTIME_MAPPING_SENSOR;
     this._runtime_mapping_topic = CONFIG.RUNTIME_MAPPING_TOPIC;
-    this._legacy_runtime_mapping_topic = CONFIG.LEGACY_RUNTIME_MAPPING_TOPIC;
     this._session_backup_sensor = CONFIG.SESSION_BACKUP_SENSOR;
-    this._legacy_session_backup_sensor = CONFIG.LEGACY_SESSION_BACKUP_SENSOR;
     this._session_backup_topic = CONFIG.SESSION_BACKUP_TOPIC;
-    this._legacy_session_backup_topic = CONFIG.LEGACY_SESSION_BACKUP_TOPIC;
     this._step_backup_sensor = CONFIG.STEP_BACKUP_SENSOR;
-    this._legacy_step_backup_sensor = CONFIG.LEGACY_STEP_BACKUP_SENSOR;
     this._step_backup_topic = CONFIG.STEP_BACKUP_TOPIC;
-    this._legacy_step_backup_topic = CONFIG.LEGACY_STEP_BACKUP_TOPIC;
     this._lastevent_store = CONFIG.LASTEVENT_STORE;
-    this._legacy_lastevent_store = CONFIG.LEGACY_LASTEVENT_STORE;
     this._blocking_helper = CONFIG.BLOCKING_HELPER;
-    this._legacy_blocking_helper = CONFIG.LEGACY_BLOCKING_HELPER;
     this._blockSeconds = CONFIG.DEFAULT_BLOCK_SECONDS;
 
     this._undoLabel = "Undo last session";
@@ -71,48 +63,36 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     this.config = config;
   }
 
-  _getEntityId(primary, legacy) {
-    if (this.hass?.states?.[primary]) return primary;
-    if (this.hass?.states?.[legacy]) return legacy;
-    return primary;
-  }
-
   _getRuntimeMappingEntity() {
-    return this._getEntityId(this._runtime_mapping_sensor, this._legacy_runtime_mapping_sensor);
+    return this._runtime_mapping_sensor;
   }
 
   _getRuntimeMappingTopic() {
-    return this._getRuntimeMappingEntity() === this._legacy_runtime_mapping_sensor
-      ? this._legacy_runtime_mapping_topic
-      : this._runtime_mapping_topic;
+    return this._runtime_mapping_topic;
   }
 
   _getSessionBackupEntity() {
-    return this._getEntityId(this._session_backup_sensor, this._legacy_session_backup_sensor);
+    return this._session_backup_sensor;
   }
 
   _getSessionBackupTopic() {
-    return this._getSessionBackupEntity() === this._legacy_session_backup_sensor
-      ? this._legacy_session_backup_topic
-      : this._session_backup_topic;
+    return this._session_backup_topic;
   }
 
   _getStepBackupEntity() {
-    return this._getEntityId(this._step_backup_sensor, this._legacy_step_backup_sensor);
+    return this._step_backup_sensor;
   }
 
   _getStepBackupTopic() {
-    return this._getStepBackupEntity() === this._legacy_step_backup_sensor
-      ? this._legacy_step_backup_topic
-      : this._step_backup_topic;
+    return this._step_backup_topic;
   }
 
   _getLastEventStoreEntity() {
-    return this._getEntityId(this._lastevent_store, this._legacy_lastevent_store);
+    return this._lastevent_store;
   }
 
   _getBlockingHelperEntity() {
-    return this._getEntityId(this._blocking_helper, this._legacy_blocking_helper);
+    return this._blocking_helper;
   }
 
   /* =========================================================

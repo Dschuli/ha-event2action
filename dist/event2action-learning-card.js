@@ -793,16 +793,8 @@ const SESSION_BACKUP_SENSOR = "sensor.event2action_session_backup";
 const SESSION_BACKUP_TOPIC = "event2action/session_backup";
 const STEP_BACKUP_SENSOR = "sensor.event2action_step_backup";
 const STEP_BACKUP_TOPIC = "event2action/step_backup";
-const LEGACY_RUNTIME_MAPPING_SENSOR = "sensor.rf433_runtime_map";
-const LEGACY_RUNTIME_MAPPING_TOPIC = "rf433/map";
-const LEGACY_SESSION_BACKUP_SENSOR = "sensor.rf433_session_backup";
-const LEGACY_SESSION_BACKUP_TOPIC = "rf433/session_backup";
-const LEGACY_STEP_BACKUP_SENSOR = "sensor.rf433_step_backup";
-const LEGACY_STEP_BACKUP_TOPIC = "rf433/step_backup";
 const LASTEVENT_STORE = "input_text.event2action_last_event_store";
 const BLOCKING_HELPER = "input_boolean.event2action_block_events";
-const LEGACY_LASTEVENT_STORE = "input_text.rf433_last_event_store";
-const LEGACY_BLOCKING_HELPER = "input_boolean.rf433_block_events";
 const logger = {
   debug: (...args) => LOG_LEVEL >= 4,
   info: (...args) => LOG_LEVEL >= 3,
@@ -1828,21 +1820,13 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   constructor() {
     super();
     this._runtime_mapping_sensor = RUNTIME_MAPPING_SENSOR;
-    this._legacy_runtime_mapping_sensor = LEGACY_RUNTIME_MAPPING_SENSOR;
     this._runtime_mapping_topic = RUNTIME_MAPPING_TOPIC;
-    this._legacy_runtime_mapping_topic = LEGACY_RUNTIME_MAPPING_TOPIC;
     this._session_backup_sensor = SESSION_BACKUP_SENSOR;
-    this._legacy_session_backup_sensor = LEGACY_SESSION_BACKUP_SENSOR;
     this._session_backup_topic = SESSION_BACKUP_TOPIC;
-    this._legacy_session_backup_topic = LEGACY_SESSION_BACKUP_TOPIC;
     this._step_backup_sensor = STEP_BACKUP_SENSOR;
-    this._legacy_step_backup_sensor = LEGACY_STEP_BACKUP_SENSOR;
     this._step_backup_topic = STEP_BACKUP_TOPIC;
-    this._legacy_step_backup_topic = LEGACY_STEP_BACKUP_TOPIC;
     this._lastevent_store = LASTEVENT_STORE;
-    this._legacy_lastevent_store = LEGACY_LASTEVENT_STORE;
     this._blocking_helper = BLOCKING_HELPER;
-    this._legacy_blocking_helper = LEGACY_BLOCKING_HELPER;
     this._blockSeconds = DEFAULT_BLOCK_SECONDS;
     this._undoLabel = "Undo last session";
     this._undoHint = "Restores the mapping to the state before starting the last learning session.";
@@ -1863,37 +1847,29 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   setConfig(config) {
     this.config = config;
   }
-  _getEntityId(primary, legacy) {
-    var _a2, _b, _c, _d;
-    if ((_b = (_a2 = this.hass) == null ? void 0 : _a2.states) == null ? void 0 : _b[primary])
-      return primary;
-    if ((_d = (_c = this.hass) == null ? void 0 : _c.states) == null ? void 0 : _d[legacy])
-      return legacy;
-    return primary;
-  }
   _getRuntimeMappingEntity() {
-    return this._getEntityId(this._runtime_mapping_sensor, this._legacy_runtime_mapping_sensor);
+    return this._runtime_mapping_sensor;
   }
   _getRuntimeMappingTopic() {
-    return this._getRuntimeMappingEntity() === this._legacy_runtime_mapping_sensor ? this._legacy_runtime_mapping_topic : this._runtime_mapping_topic;
+    return this._runtime_mapping_topic;
   }
   _getSessionBackupEntity() {
-    return this._getEntityId(this._session_backup_sensor, this._legacy_session_backup_sensor);
+    return this._session_backup_sensor;
   }
   _getSessionBackupTopic() {
-    return this._getSessionBackupEntity() === this._legacy_session_backup_sensor ? this._legacy_session_backup_topic : this._session_backup_topic;
+    return this._session_backup_topic;
   }
   _getStepBackupEntity() {
-    return this._getEntityId(this._step_backup_sensor, this._legacy_step_backup_sensor);
+    return this._step_backup_sensor;
   }
   _getStepBackupTopic() {
-    return this._getStepBackupEntity() === this._legacy_step_backup_sensor ? this._legacy_step_backup_topic : this._step_backup_topic;
+    return this._step_backup_topic;
   }
   _getLastEventStoreEntity() {
-    return this._getEntityId(this._lastevent_store, this._legacy_lastevent_store);
+    return this._lastevent_store;
   }
   _getBlockingHelperEntity() {
-    return this._getEntityId(this._blocking_helper, this._legacy_blocking_helper);
+    return this._blocking_helper;
   }
   async connectedCallback() {
     super.connectedCallback();

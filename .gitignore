@@ -41,7 +41,6 @@ __pycache__/
 
 # Node modules (if using any build tools)
 node_modules/
-package-lock.json
 
 # Temporary files
 *.tmp

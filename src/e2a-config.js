@@ -77,19 +77,7 @@ export const SESSION_BACKUP_TOPIC = "event2action/session_backup";
 export const STEP_BACKUP_SENSOR = "sensor.event2action_step_backup";
 export const STEP_BACKUP_TOPIC = "event2action/step_backup";
 
-// Legacy RF433 aliases kept for compatibility with existing setups
-export const LEGACY_RUNTIME_MAPPING_SENSOR = "sensor.rf433_runtime_map";
-export const LEGACY_RUNTIME_MAPPING_TOPIC = "rf433/map";
-export const LEGACY_SESSION_BACKUP_SENSOR = "sensor.rf433_session_backup";
-export const LEGACY_SESSION_BACKUP_TOPIC = "rf433/session_backup";
-export const LEGACY_STEP_BACKUP_SENSOR = "sensor.rf433_step_backup";
-export const LEGACY_STEP_BACKUP_TOPIC = "rf433/step_backup";
-
 // Helper entities
 export const LASTEVENT_STORE = "input_text.event2action_last_event_store";
 export const BLOCKING_HELPER = "input_boolean.event2action_block_events";
-
-// Legacy helper aliases kept for compatibility with existing setups
-export const LEGACY_LASTEVENT_STORE = "input_text.rf433_last_event_store";
-export const LEGACY_BLOCKING_HELPER = "input_boolean.rf433_block_events";
 
