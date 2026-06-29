@@ -1,0 +1,7 @@
+{
+  "name": "Event2Action Learning Card",
+  "filename": "event2action-learning-card.js",
+  "render_readme": true,
+  "content_in_root": false,
+  "homeassistant": "2024.1.0"
+}

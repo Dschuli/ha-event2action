@@ -60,6 +60,22 @@ Add this card to a dashboard:
 type: custom:event2action-learning-card
 ```
 
+Optional card configuration is available through the card editor, or as YAML keys beside `type`:
+
+```yaml
+type: custom:event2action-learning-card
+entity_domain_list:
+  - switch
+  - light
+  - cover
+  - script
+  - automation
+auto_unblock: true
+log_level: 2
+custom_common_service_data_keys: {}
+prefill_service_data: {}
+```
+
 Use a panel view for the cleanest layout.
 
 ## 4. Verify the Event Flow

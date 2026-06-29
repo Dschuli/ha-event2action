@@ -159,7 +159,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 - **Entity**: The Home Assistant entity to control
   - Supports: `switch`, `light`, `cover`, `script`
-  - Additional domains can be configured in e2a-config.js
+  - Additional domains can be configured in the card configuration editor
   - Uses entity picker with domain filtering
 
 - **Service**: The service to call on the entity
@@ -175,7 +175,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
     - **Light**: brightness, rgb_color, color_temp, transition
     - **Cover**: position
     - **Media Player**: volume_level
-    Note: The currently hardcoded list of common parameters by service can be customized/extended via `e2a-config.js`
+    Note: The common parameters by service can be customized/extended in the card configuration editor
 
 - **Active**: Enable/disable the mapping (default: ON)
 
@@ -198,7 +198,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 ### Additional Editor Features
 
 - **Add Custom Common Parameters**:
-  - You can add custom common parameters to the service data via the dropdown, as defined in your configuration (`e2a-config.js`).
+  - You can add custom common parameters to the service data via the dropdown, as defined in the card configuration.
   - These parameters are available for quick insertion and can be tailored to your use case.
 
 - **Preset Service Data for Entity/Service**:
@@ -283,10 +283,11 @@ Each mapping entry contains:
 
 ### Logging
 
-Adjust logging level in `e2a-config.js`:
+Adjust logging level in the card configuration editor or card YAML:
 
-```javascript
-export const LOG_LEVEL = 2;
+```yaml
+type: custom:event2action-learning-card
+log_level: 2
 ```
 
 - `0` = Off
@@ -297,17 +298,37 @@ export const LOG_LEVEL = 2;
 
 ### Event Blocking Duration
 
-Default blocking duration is 30 seconds, configurable in `e2a-config.js`:
+Default blocking duration is stored by the card when changed in the UI. It can also be seeded in card YAML:
 
-```javascript
-export const DEFAULT_BLOCK_SECONDS = 30;
+```yaml
+type: custom:event2action-learning-card
+default_block_seconds: 60
 ```
 
-### Applying Configuration Changes
+### Card Configuration YAML
 
-After modifying `e2a-config.js`, you must clear your browser cache to load the updated code:
-- **Desktop browsers**: Clear cache (Ctrl+Shift+Delete / Cmd+Shift+Delete) or hard refresh (Ctrl+F5 / Cmd+Shift+R)
-- **Home Assistant companion app**: Clear app cache in app settings
+The following settings are user-facing card configuration options:
+
+```yaml
+type: custom:event2action-learning-card
+entity_domain_list:
+  - switch
+  - light
+  - cover
+  - script
+  - automation
+auto_unblock: true
+log_level: 2
+custom_common_service_data_keys:
+  "*dimmer_control|script.turn_on":
+    - label: light_entity
+      value: light_entity
+      default: ""
+prefill_service_data:
+  "*dimmer_control|script.turn_on": '{"light_entity":" ","steps":5,"bounce_at_top":false}'
+```
+
+MQTT sensor names, MQTT topics, and helper entity names remain code-level constants because most users should keep the packaged Home Assistant entities aligned.
 
 ---
 

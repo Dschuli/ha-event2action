@@ -148,13 +148,36 @@ This exercises the RF433 feeder and the shared runtime flow without requiring a 
 
 ## Configuration
 
-Edit `homeassistant/www/event2action/e2a-config.js` to customize:
+Open the dashboard card configuration editor to customize the user-facing options:
 
 - Supported entity domains
-- MQTT sensor names and topics
-- Helper entity names
-- Default event blocking duration
+- Custom common service data dropdown entries
+- Prefilled service data by entity/service pattern
+- Auto-unblock behavior
 - Logging level
+
+Example YAML:
+
+```yaml
+type: custom:event2action-learning-card
+entity_domain_list:
+  - switch
+  - light
+  - cover
+  - script
+  - automation
+auto_unblock: true
+log_level: 2
+custom_common_service_data_keys:
+  "*dimmer_control|script.turn_on":
+    - label: light_entity
+      value: light_entity
+      default: ""
+prefill_service_data:
+  "*dimmer_control|script.turn_on": '{"light_entity":" ","steps":5,"bounce_at_top":false}'
+```
+
+MQTT sensor names, MQTT topics, and helper entity names remain code-level defaults in `src/e2a-config.js`; most installations should not need to change them.
 
 ## Troubleshooting
 

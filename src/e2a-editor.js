@@ -11,6 +11,9 @@ export class E2AEditor extends LitElement {
     hass: { attribute: false },
     draft: { type: Object },
     collection: { type: Array },
+    entityDomainList: { type: Array },
+    customCommonServiceDataKeys: { type: Object },
+    prefillServiceData: { type: Object },
     _baseline: { state: true },
     _working: { state: true },
     _cachedEntities: { state: true },
@@ -26,7 +29,9 @@ export class E2AEditor extends LitElement {
     this._baseline = null;
     this._working = null;
     this.existing = false;
-    this._entityDomainList = ENTITY_DOMAIN_LIST;
+    this.entityDomainList = ENTITY_DOMAIN_LIST;
+    this.customCommonServiceDataKeys = CUSTOM_COMMON_SERVICE_DATA_KEYS;
+    this.prefillServiceData = PREFILL_SERVICE_DATA;
     this._cachedEntities = null;
     this._entityCacheError = null;
     this._showEntitySelector = false;
@@ -51,6 +56,9 @@ export class E2AEditor extends LitElement {
 
   async _fetchAndCacheEntities() {
     if (!this.hass || this._cachedEntities) return;
+    const entityDomainList = Array.isArray(this.entityDomainList) && this.entityDomainList.length
+      ? this.entityDomainList
+      : ENTITY_DOMAIN_LIST;
 
     const timeout = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Timeout')), 5000)
@@ -61,7 +69,7 @@ export class E2AEditor extends LitElement {
       const entities = Object.keys(this.hass.states)
         .filter(entity_id => {
           const domain = entity_id.split('.')[0];
-          return this._entityDomainList.includes(domain);
+          return entityDomainList.includes(domain);
         });
       return entities;
     })();
@@ -70,7 +78,7 @@ export class E2AEditor extends LitElement {
       const entities = await Promise.race([fetchEntities, timeout]);
       this._cachedEntities = entities;
       this._entityCacheError = null;
-      logger.info(`E2AEditor: Cached ${entities.length} entities from ${this._entityDomainList.length} domains`);
+      logger.info(`E2AEditor: Cached ${entities.length} entities from ${entityDomainList.length} domains`);
       this.requestUpdate(); // Force re-render with cached entities
     } catch (err) {
       if (err.message === 'Timeout') {
@@ -156,6 +164,15 @@ export class E2AEditor extends LitElement {
         this._baseline = structuredClone(this.draft);
         this._working = structuredClone(this.draft);
       }
+    }
+
+    if (changedProps.has("entityDomainList")) {
+      this._cachedEntities = null;
+      this._entityCacheError = null;
+    }
+
+    if (changedProps.has("customCommonServiceDataKeys")) {
+      this._mergedServiceDataKeys = this._computeMergedServiceDataKeys();
     }
 
     // Fetch entities when hass becomes available
@@ -284,12 +301,12 @@ export class E2AEditor extends LitElement {
     ];
 
     // Add custom keys from config (entity|service specific)
-    if (CUSTOM_COMMON_SERVICE_DATA_KEYS && typeof CUSTOM_COMMON_SERVICE_DATA_KEYS === 'object') {
-      for (const customKey in CUSTOM_COMMON_SERVICE_DATA_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(CUSTOM_COMMON_SERVICE_DATA_KEYS, customKey)) {
+    if (this.customCommonServiceDataKeys && typeof this.customCommonServiceDataKeys === 'object') {
+      for (const customKey in this.customCommonServiceDataKeys) {
+        if (Object.prototype.hasOwnProperty.call(this.customCommonServiceDataKeys, customKey)) {
           keyTemplates.push({
             key: customKey, // e.g. "entity_id|service"
-            options: CUSTOM_COMMON_SERVICE_DATA_KEYS[customKey]
+            options: this.customCommonServiceDataKeys[customKey]
           });
         }
       }
@@ -327,26 +344,28 @@ export class E2AEditor extends LitElement {
       return new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
     }
     // If PREFILL_SERVICE_DATA is an object, use wildcard matching for keys
-    if (PREFILL_SERVICE_DATA && typeof PREFILL_SERVICE_DATA === 'object' && !Array.isArray(PREFILL_SERVICE_DATA)) {
-      const keys = Object.keys(PREFILL_SERVICE_DATA);
+    const prefillServiceData = this.prefillServiceData;
+
+    if (prefillServiceData && typeof prefillServiceData === 'object' && !Array.isArray(prefillServiceData)) {
+      const keys = Object.keys(prefillServiceData);
       const matches = keys.filter(k => wildcardToRegex(k).test(searchKey));
       if (matches.length === 0) return undefined;
-      return PREFILL_SERVICE_DATA[matches[matches.length - 1]];
+      return prefillServiceData[matches[matches.length - 1]];
     }
     // If it's an array (legacy), use direct lookup
-    if (Array.isArray(PREFILL_SERVICE_DATA)) {
-      for (const t of PREFILL_SERVICE_DATA) {
+    if (Array.isArray(prefillServiceData)) {
+      for (const t of prefillServiceData) {
         const regex = wildcardToRegex(t.key);
         logger.info(`[Prefill Debug] Pattern: ${t.key}, Regex: ${regex}, SearchKey: ${searchKey}, Match: ${regex.test(searchKey)}`);
       }
-      const matches = PREFILL_SERVICE_DATA.filter(t => wildcardToRegex(t.key).test(searchKey));
+      const matches = prefillServiceData.filter(t => wildcardToRegex(t.key).test(searchKey));
       logger.info(`[Prefill Debug] Matches found: ${matches.length}`);
       if (matches.length === 0) return undefined;
       return matches[matches.length - 1].value;
     }
     // Fallback: direct lookup
-    logger.info(`[Prefill Debug] Direct lookup for key: ${searchKey}, Found: ${PREFILL_SERVICE_DATA[searchKey]}`);
-    return PREFILL_SERVICE_DATA[searchKey];
+    logger.info(`[Prefill Debug] Direct lookup for key: ${searchKey}, Found: ${prefillServiceData?.[searchKey]}`);
+    return prefillServiceData?.[searchKey];
   }
 
   async _resolveNativeInputElement(field) {
@@ -583,6 +602,9 @@ export class E2AEditor extends LitElement {
     if (!this._working) {
       this._working = structuredClone(this.draft);
     }
+    const entityDomainList = Array.isArray(this.entityDomainList) && this.entityDomainList.length
+      ? this.entityDomainList
+      : ENTITY_DOMAIN_LIST;
 
     return html`
         ${this._entityCacheError ? html`
@@ -598,7 +620,7 @@ export class E2AEditor extends LitElement {
               .hass=${this.hass}
               .selector=${this._cachedEntities
         ? { entity: { include_entities: this._cachedEntities } }
-        : { entity: { domain: this._entityDomainList } }}
+        : { entity: { domain: entityDomainList } }}
               .value=${this._working?.entity ?? ""}
               ?disabled=${this.disabled}
               @value-changed=${e => this._change("entity", e.detail.value)}
@@ -713,7 +735,7 @@ export class E2AEditor extends LitElement {
                       .required=${true}
                       style="width: 100%;"
                       .selector=${{
-            entity: { domain: this._entityDomainList }
+            entity: { domain: entityDomainList }
           }}
                       @value-changed=${e => {
             const raw = e.detail?.value;

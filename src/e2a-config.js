@@ -62,7 +62,7 @@ export const PREFILL_SERVICE_DATA = {
 *		when a long blocking period is set.
 */
 export const AUTO_UNBLOCK = true;
-export const DEFAULT_BLOCK_SECONDS = 30;	// Default seconds to block event actions
+export const DEFAULT_BLOCK_SECONDS = 60;	// Initial default seconds to block event actions
 
 // Logging levels: 0 = off, 1 = error only, 2 = error + warn, 3 = error + warn + info, 4 = all (debug)
 export const LOG_LEVEL = 2;

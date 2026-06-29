@@ -785,7 +785,8 @@ const CUSTOM_COMMON_SERVICE_DATA_KEYS = {
 const PREFILL_SERVICE_DATA = {
   "*dimmer_control|script.turn_on": '{"light_entity":" ","steps":5,"bounce_at_top":false}'
 };
-const DEFAULT_BLOCK_SECONDS = 30;
+const AUTO_UNBLOCK = true;
+const DEFAULT_BLOCK_SECONDS = 60;
 const LOG_LEVEL = 2;
 const RUNTIME_MAPPING_SENSOR = "sensor.event2action_runtime_map";
 const RUNTIME_MAPPING_TOPIC = "event2action/map";
@@ -795,11 +796,16 @@ const STEP_BACKUP_SENSOR = "sensor.event2action_step_backup";
 const STEP_BACKUP_TOPIC = "event2action/step_backup";
 const LASTEVENT_STORE = "input_text.event2action_last_event_store";
 const BLOCKING_HELPER = "input_boolean.event2action_block_events";
+let activeLogLevel = LOG_LEVEL;
+function setLogLevel(level) {
+  const nextLevel = Number(level);
+  activeLogLevel = Number.isFinite(nextLevel) ? nextLevel : LOG_LEVEL;
+}
 const logger = {
-  debug: (...args) => LOG_LEVEL >= 4,
-  info: (...args) => LOG_LEVEL >= 3,
-  warn: (...args) => console.warn(...args),
-  error: (...args) => console.error(...args)
+  debug: (...args) => activeLogLevel >= 4 && console.log(...args),
+  info: (...args) => activeLogLevel >= 3 && console.log(...args),
+  warn: (...args) => activeLogLevel >= 2 && console.warn(...args),
+  error: (...args) => activeLogLevel >= 1 && console.error(...args)
 };
 const e2aTheme = i$1`
   :host {
@@ -1036,7 +1042,9 @@ class E2AEditor extends s {
     this._baseline = null;
     this._working = null;
     this.existing = false;
-    this._entityDomainList = ENTITY_DOMAIN_LIST;
+    this.entityDomainList = ENTITY_DOMAIN_LIST;
+    this.customCommonServiceDataKeys = CUSTOM_COMMON_SERVICE_DATA_KEYS;
+    this.prefillServiceData = PREFILL_SERVICE_DATA;
     this._cachedEntities = null;
     this._entityCacheError = null;
     this._showEntitySelector = false;
@@ -1057,13 +1065,14 @@ class E2AEditor extends s {
   async _fetchAndCacheEntities() {
     if (!this.hass || this._cachedEntities)
       return;
+    const entityDomainList = Array.isArray(this.entityDomainList) && this.entityDomainList.length ? this.entityDomainList : ENTITY_DOMAIN_LIST;
     const timeout = new Promise(
       (_2, reject) => setTimeout(() => reject(new Error("Timeout")), 5e3)
     );
     const fetchEntities = (async () => {
       const entities = Object.keys(this.hass.states).filter((entity_id) => {
         const domain = entity_id.split(".")[0];
-        return this._entityDomainList.includes(domain);
+        return entityDomainList.includes(domain);
       });
       return entities;
     })();
@@ -1071,7 +1080,7 @@ class E2AEditor extends s {
       const entities = await Promise.race([fetchEntities, timeout]);
       this._cachedEntities = entities;
       this._entityCacheError = null;
-      logger.info(`E2AEditor: Cached ${entities.length} entities from ${this._entityDomainList.length} domains`);
+      logger.info(`E2AEditor: Cached ${entities.length} entities from ${entityDomainList.length} domains`);
       this.requestUpdate();
     } catch (err) {
       if (err.message === "Timeout") {
@@ -1126,6 +1135,13 @@ class E2AEditor extends s {
         this._working = structuredClone(this.draft);
       }
     }
+    if (changedProps.has("entityDomainList")) {
+      this._cachedEntities = null;
+      this._entityCacheError = null;
+    }
+    if (changedProps.has("customCommonServiceDataKeys")) {
+      this._mergedServiceDataKeys = this._computeMergedServiceDataKeys();
+    }
     if (changedProps.has("hass") && this.hass && !this._cachedEntities) {
       this._fetchAndCacheEntities();
     }
@@ -1135,6 +1151,7 @@ class E2AEditor extends s {
   }
   _getUniqueValues(field) {
     if (!this.collection || !Array.isArray(this.collection)) {
+      logger.debug(`_getUniqueValues(${field}): no collection`);
       return [];
     }
     const values = this.collection.map((item) => item[field]).filter((v2) => v2 && v2 !== "").filter((v2, i2, arr) => arr.indexOf(v2) === i2).sort();
@@ -1251,12 +1268,12 @@ class E2AEditor extends s {
         ]
       }
     ];
-    if (CUSTOM_COMMON_SERVICE_DATA_KEYS && typeof CUSTOM_COMMON_SERVICE_DATA_KEYS === "object") {
-      for (const customKey in CUSTOM_COMMON_SERVICE_DATA_KEYS) {
-        if (Object.prototype.hasOwnProperty.call(CUSTOM_COMMON_SERVICE_DATA_KEYS, customKey)) {
+    if (this.customCommonServiceDataKeys && typeof this.customCommonServiceDataKeys === "object") {
+      for (const customKey in this.customCommonServiceDataKeys) {
+        if (Object.prototype.hasOwnProperty.call(this.customCommonServiceDataKeys, customKey)) {
           keyTemplates.push({
             key: customKey,
-            options: CUSTOM_COMMON_SERVICE_DATA_KEYS[customKey]
+            options: this.customCommonServiceDataKeys[customKey]
           });
         }
       }
@@ -1288,26 +1305,27 @@ class E2AEditor extends s {
     function wildcardToRegex(pattern) {
       return new RegExp("^" + pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$");
     }
-    if (PREFILL_SERVICE_DATA && typeof PREFILL_SERVICE_DATA === "object" && !Array.isArray(PREFILL_SERVICE_DATA)) {
-      const keys = Object.keys(PREFILL_SERVICE_DATA);
+    const prefillServiceData = this.prefillServiceData;
+    if (prefillServiceData && typeof prefillServiceData === "object" && !Array.isArray(prefillServiceData)) {
+      const keys = Object.keys(prefillServiceData);
       const matches = keys.filter((k2) => wildcardToRegex(k2).test(searchKey));
       if (matches.length === 0)
         return void 0;
-      return PREFILL_SERVICE_DATA[matches[matches.length - 1]];
+      return prefillServiceData[matches[matches.length - 1]];
     }
-    if (Array.isArray(PREFILL_SERVICE_DATA)) {
-      for (const t2 of PREFILL_SERVICE_DATA) {
+    if (Array.isArray(prefillServiceData)) {
+      for (const t2 of prefillServiceData) {
         const regex = wildcardToRegex(t2.key);
         logger.info(`[Prefill Debug] Pattern: ${t2.key}, Regex: ${regex}, SearchKey: ${searchKey}, Match: ${regex.test(searchKey)}`);
       }
-      const matches = PREFILL_SERVICE_DATA.filter((t2) => wildcardToRegex(t2.key).test(searchKey));
+      const matches = prefillServiceData.filter((t2) => wildcardToRegex(t2.key).test(searchKey));
       logger.info(`[Prefill Debug] Matches found: ${matches.length}`);
       if (matches.length === 0)
         return void 0;
       return matches[matches.length - 1].value;
     }
-    logger.info(`[Prefill Debug] Direct lookup for key: ${searchKey}, Found: ${PREFILL_SERVICE_DATA[searchKey]}`);
-    return PREFILL_SERVICE_DATA[searchKey];
+    logger.info(`[Prefill Debug] Direct lookup for key: ${searchKey}, Found: ${prefillServiceData == null ? void 0 : prefillServiceData[searchKey]}`);
+    return prefillServiceData == null ? void 0 : prefillServiceData[searchKey];
   }
   async _resolveNativeInputElement(field) {
     var _a2, _b, _c;
@@ -1446,6 +1464,7 @@ class E2AEditor extends s {
     }
   }
   _onSave() {
+    logger.info("Save clicked");
     this.dispatchEvent(
       new CustomEvent("save", {
         bubbles: true,
@@ -1454,6 +1473,7 @@ class E2AEditor extends s {
     );
   }
   _onCancel() {
+    logger.info("Cancel clicked");
     this.dispatchEvent(
       new CustomEvent("cancel", {
         bubbles: true,
@@ -1462,6 +1482,7 @@ class E2AEditor extends s {
     );
   }
   _onDelete() {
+    logger.info("Delete clicked");
     this.dispatchEvent(
       new CustomEvent("delete", {
         bubbles: true,
@@ -1514,6 +1535,7 @@ class E2AEditor extends s {
     if (!this._working) {
       this._working = structuredClone(this.draft);
     }
+    const entityDomainList = Array.isArray(this.entityDomainList) && this.entityDomainList.length ? this.entityDomainList : ENTITY_DOMAIN_LIST;
     return x`
         ${this._entityCacheError ? x`
           <div class="row">
@@ -1526,7 +1548,7 @@ class E2AEditor extends s {
           <div class="row-4">
             <ha-selector
               .hass=${this.hass}
-              .selector=${this._cachedEntities ? { entity: { include_entities: this._cachedEntities } } : { entity: { domain: this._entityDomainList } }}
+              .selector=${this._cachedEntities ? { entity: { include_entities: this._cachedEntities } } : { entity: { domain: entityDomainList } }}
               .value=${(_b = (_a2 = this._working) == null ? void 0 : _a2.entity) != null ? _b : ""}
               ?disabled=${this.disabled}
               @value-changed=${(e2) => this._change("entity", e2.detail.value)}
@@ -1657,7 +1679,7 @@ class E2AEditor extends s {
                       .required=${true}
                       style="width: 100%;"
                       .selector=${{
-      entity: { domain: this._entityDomainList }
+      entity: { domain: entityDomainList }
     }}
                       @value-changed=${(e2) => {
       var _a3, _b2, _c2;
@@ -1788,6 +1810,9 @@ __publicField(E2AEditor, "properties", {
   hass: { attribute: false },
   draft: { type: Object },
   collection: { type: Array },
+  entityDomainList: { type: Array },
+  customCommonServiceDataKeys: { type: Object },
+  prefillServiceData: { type: Object },
   _baseline: { state: true },
   _working: { state: true },
   _cachedEntities: { state: true },
@@ -1816,6 +1841,220 @@ __publicField(E2AEditor, "styles", [
 if (!customElements.get("e2a-editor")) {
   customElements.define("e2a-editor", E2AEditor);
 }
+const DEFAULT_CONFIG = {
+  entity_domain_list: ENTITY_DOMAIN_LIST,
+  custom_common_service_data_keys: CUSTOM_COMMON_SERVICE_DATA_KEYS,
+  prefill_service_data: PREFILL_SERVICE_DATA,
+  auto_unblock: AUTO_UNBLOCK,
+  log_level: LOG_LEVEL
+};
+class Event2ActionLearningCardEditor extends s {
+  constructor() {
+    super();
+    this.config = {};
+    this._customCommonServiceDataKeysText = this._formatJson(DEFAULT_CONFIG.custom_common_service_data_keys);
+    this._prefillServiceDataText = this._formatJson(DEFAULT_CONFIG.prefill_service_data);
+    this._customCommonServiceDataKeysError = "";
+    this._prefillServiceDataError = "";
+  }
+  setConfig(config) {
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...config || {}
+    };
+    this._customCommonServiceDataKeysText = this._formatJson(this.config.custom_common_service_data_keys);
+    this._prefillServiceDataText = this._formatJson(this.config.prefill_service_data);
+  }
+  _formatJson(value) {
+    return JSON.stringify(value != null ? value : {}, null, 2);
+  }
+  _dispatchConfig(nextConfig) {
+    this.config = nextConfig;
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      detail: { config: nextConfig },
+      bubbles: true,
+      composed: true
+    }));
+  }
+  _setConfigValue(key, value) {
+    this._dispatchConfig({
+      ...this.config,
+      [key]: value
+    });
+  }
+  _onDomainsChanged(event) {
+    const domains = event.target.value.split(",").map((domain) => domain.trim()).filter(Boolean);
+    this._setConfigValue("entity_domain_list", domains);
+  }
+  _onJsonChanged(key, textKey, errorKey, event) {
+    const text = event.target.value;
+    this[textKey] = text;
+    try {
+      const parsed = JSON.parse(text || "{}");
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Expected a JSON object");
+      }
+      this[errorKey] = "";
+      this._setConfigValue(key, parsed);
+    } catch (error) {
+      this[errorKey] = error.message;
+    }
+  }
+  _renderSwitch(checked, onChange) {
+    if (customElements.get("ha-switch")) {
+      return x`
+        <ha-switch
+          .checked=${checked}
+          @change=${onChange}>
+        </ha-switch>
+      `;
+    }
+    return x`
+      <input
+        type="checkbox"
+        .checked=${checked}
+        @change=${onChange}
+      />
+    `;
+  }
+  render() {
+    var _a2;
+    const config = {
+      ...DEFAULT_CONFIG,
+      ...this.config || {}
+    };
+    return x`
+      <div class="editor">
+        <label class="field">
+          <span>Entity domains</span>
+          <input
+            type="text"
+            .value=${(config.entity_domain_list || []).join(", ")}
+            @change=${this._onDomainsChanged}
+          />
+          <small>Comma-separated domains shown by the target entity selector.</small>
+        </label>
+
+        <label class="field">
+          <span>Custom common service data keys</span>
+          <textarea
+            rows="10"
+            .value=${this._customCommonServiceDataKeysText}
+            @input=${(event) => this._onJsonChanged(
+      "custom_common_service_data_keys",
+      "_customCommonServiceDataKeysText",
+      "_customCommonServiceDataKeysError",
+      event
+    )}
+          ></textarea>
+          <small>JSON object keyed by entity/service patterns, for example <code>*dimmer_control|script.turn_on</code>.</small>
+          ${this._customCommonServiceDataKeysError ? x`<div class="error">${this._customCommonServiceDataKeysError}</div>` : null}
+        </label>
+
+        <label class="field">
+          <span>Prefill service data</span>
+          <textarea
+            rows="8"
+            .value=${this._prefillServiceDataText}
+            @input=${(event) => this._onJsonChanged(
+      "prefill_service_data",
+      "_prefillServiceDataText",
+      "_prefillServiceDataError",
+      event
+    )}
+          ></textarea>
+          <small>JSON object keyed by entity/service patterns. Values are inserted into the service data field.</small>
+          ${this._prefillServiceDataError ? x`<div class="error">${this._prefillServiceDataError}</div>` : null}
+        </label>
+
+        <div class="field switch-row">
+          <span>
+            <span>Auto unblock</span>
+            <small>Unblock Event2Action automatically when leaving the card.</small>
+          </span>
+          ${this._renderSwitch(
+      config.auto_unblock !== false,
+      (event) => this._setConfigValue("auto_unblock", event.target.checked)
+    )}
+        </div>
+
+        <label class="field">
+          <span>Log level</span>
+          <select
+            .value=${String((_a2 = config.log_level) != null ? _a2 : LOG_LEVEL)}
+            @change=${(event) => this._setConfigValue("log_level", Number(event.target.value))}
+          >
+            <option value="0">0 - off</option>
+            <option value="1">1 - errors</option>
+            <option value="2">2 - warnings</option>
+            <option value="3">3 - info</option>
+            <option value="4">4 - debug</option>
+          </select>
+        </label>
+      </div>
+    `;
+  }
+}
+__publicField(Event2ActionLearningCardEditor, "properties", {
+  hass: { attribute: false },
+  config: { attribute: false },
+  _customCommonServiceDataKeysText: { state: true },
+  _prefillServiceDataText: { state: true },
+  _customCommonServiceDataKeysError: { state: true },
+  _prefillServiceDataError: { state: true }
+});
+__publicField(Event2ActionLearningCardEditor, "styles", i$1`
+    .editor {
+      display: grid;
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field > span,
+    .switch-row > span > span {
+      font-weight: 500;
+    }
+
+    input,
+    select,
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      color: var(--primary-text-color);
+      background: var(--card-background-color);
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      padding: 8px;
+      font: inherit;
+    }
+
+    textarea {
+      font-family: var(--code-font-family, monospace);
+      resize: vertical;
+    }
+
+    small {
+      color: var(--secondary-text-color);
+      line-height: 1.35;
+    }
+
+    .switch-row {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
+
+    .error {
+      color: var(--error-color);
+      font-size: 12px;
+    }
+  `);
+if (!customElements.get("event2action-learning-card-editor")) {
+  customElements.define("event2action-learning-card-editor", Event2ActionLearningCardEditor);
+}
 const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   constructor() {
     super();
@@ -1828,6 +2067,11 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     this._lastevent_store = LASTEVENT_STORE;
     this._blocking_helper = BLOCKING_HELPER;
     this._blockSeconds = DEFAULT_BLOCK_SECONDS;
+    this._entityDomainList = ENTITY_DOMAIN_LIST;
+    this._customCommonServiceDataKeys = CUSTOM_COMMON_SERVICE_DATA_KEYS;
+    this._prefillServiceData = PREFILL_SERVICE_DATA;
+    this._autoUnblock = AUTO_UNBLOCK;
+    this._logLevel = LOG_LEVEL;
     this._undoLabel = "Undo last session";
     this._undoHint = "Restores the mapping to the state before starting the last learning session.";
     this._busyLabel = "Working\u2026";
@@ -1845,7 +2089,76 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     this._savedBlockTime = null;
   }
   setConfig(config) {
-    this.config = config;
+    this.config = config || {};
+    this._entityDomainList = this._normalizeStringList(
+      this.config.entity_domain_list,
+      ENTITY_DOMAIN_LIST
+    );
+    this._customCommonServiceDataKeys = this._normalizeObjectConfig(
+      this.config.custom_common_service_data_keys,
+      CUSTOM_COMMON_SERVICE_DATA_KEYS
+    );
+    this._prefillServiceData = this._normalizeObjectConfig(
+      this.config.prefill_service_data,
+      PREFILL_SERVICE_DATA
+    );
+    this._autoUnblock = this._normalizeBoolean(
+      this.config.auto_unblock,
+      AUTO_UNBLOCK
+    );
+    this._logLevel = this._normalizeNumber(
+      this.config.log_level,
+      LOG_LEVEL
+    );
+    setLogLevel(this._logLevel);
+    const configuredBlockSeconds = this._normalizeNumber(
+      this.config.default_block_seconds,
+      null
+    );
+    if (configuredBlockSeconds !== null && configuredBlockSeconds > 0) {
+      this._blockSeconds = configuredBlockSeconds;
+    }
+  }
+  static getConfigElement() {
+    return document.createElement("event2action-learning-card-editor");
+  }
+  static getStubConfig() {
+    return {
+      entity_domain_list: ENTITY_DOMAIN_LIST,
+      custom_common_service_data_keys: CUSTOM_COMMON_SERVICE_DATA_KEYS,
+      prefill_service_data: PREFILL_SERVICE_DATA,
+      auto_unblock: AUTO_UNBLOCK,
+      log_level: LOG_LEVEL
+    };
+  }
+  _normalizeStringList(value, fallback) {
+    if (Array.isArray(value)) {
+      const entries = value.map((item) => String(item).trim()).filter(Boolean);
+      return entries.length ? entries : fallback;
+    }
+    if (typeof value === "string") {
+      const entries = value.split(",").map((item) => item.trim()).filter(Boolean);
+      return entries.length ? entries : fallback;
+    }
+    return fallback;
+  }
+  _normalizeObjectConfig(value, fallback) {
+    return value && typeof value === "object" ? value : fallback;
+  }
+  _normalizeBoolean(value, fallback) {
+    if (typeof value === "boolean")
+      return value;
+    if (typeof value === "string") {
+      if (value.toLowerCase() === "true")
+        return true;
+      if (value.toLowerCase() === "false")
+        return false;
+    }
+    return fallback;
+  }
+  _normalizeNumber(value, fallback) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : fallback;
   }
   _getRuntimeMappingEntity() {
     return this._runtime_mapping_sensor;
@@ -1873,9 +2186,10 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   }
   async connectedCallback() {
     super.connectedCallback();
+    logger.debug("E2ALearningCard: connectedCallback called");
     this.setLastEventData();
     this._setSessionBackupHint();
-    if (this.hass) {
+    if (this._autoUnblock && this.hass) {
       try {
         const savedBlock = localStorage.getItem("e2a_block_time");
         logger.debug("E2ALearningCard: Restoring block time from localStorage:", savedBlock);
@@ -1897,8 +2211,9 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       logger.debug("E2ALearningCard: Restored learning mode from localStorage:", this._learningMode);
     }
     this._onBeforeUnload = () => {
-      {
+      if (this._autoUnblock) {
         this.unBlockEvents();
+        logger.debug("E2ALearningCard: unblocking due to page unload");
       }
     };
     window.addEventListener("beforeunload", this._onBeforeUnload);
@@ -1916,6 +2231,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   disconnectedCallback() {
     var _a2;
     super.disconnectedCallback();
+    logger.debug("E2ALearningCard: disconnectedCallback called");
     if (this._unhandledRejectionHandler) {
       window.removeEventListener("unhandledrejection", this._unhandledRejectionHandler);
     }
@@ -1925,7 +2241,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     } catch (e2) {
       logger.warn("E2ALearningCard: Failed to save learning mode to localStorage", e2);
     }
-    {
+    if (this._autoUnblock) {
       if (this.hass && ((_a2 = this.hass.states[this._getBlockingHelperEntity()]) == null ? void 0 : _a2.state) === "on") {
         try {
           localStorage.setItem("e2a_block_time", String(this._blockCounter));
@@ -1939,6 +2255,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
         }
       }
       this.unBlockEvents();
+      logger.debug("E2ALearningCard: unblocking due to disconnect");
     }
     if (this._blockCounterInterval) {
       clearInterval(this._blockCounterInterval);
@@ -1956,6 +2273,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     }
     if (!changedProps.has("hass"))
       return;
+    this._syncBlockSecondsFromRuntimeSettings();
     this.setLastEventData();
     if (!this._hasValidLastData)
       return;
@@ -1972,6 +2290,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     const store = this.hass.states[this._getLastEventStoreEntity()];
     const storeState = (_a2 = store == null ? void 0 : store.state) != null ? _a2 : null;
     if (storeState !== this._prevStoreState) {
+      logger.info("E2ALearningCard: Detected change in RF event store");
       this._prevStoreState = storeState;
       if (!storeState || storeState === "unknown" || storeState === "unavailable") {
         this._resetLastEventData();
@@ -1999,16 +2318,41 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     this._lastTs = null;
   }
   _get_mapping_data(sensor_entity) {
-    var _a2;
+    var _a2, _b;
     const stateObj = this.hass.states[sensor_entity];
     if (!stateObj) {
       logger.warn("E2ALearningCard: mapping state object not found");
-      return { lastupdated: 0, map: [] };
+      return { lastupdated: 0, map: [], settings: {} };
     }
     const lastupdated = stateObj.last_updated;
     const map = ((_a2 = stateObj.attributes) == null ? void 0 : _a2.map) || [];
+    const settings = ((_b = stateObj.attributes) == null ? void 0 : _b.settings) || {};
     logger.debug("E2ALearningCard: fetched mapping data with", map.length, "entries", lastupdated);
-    return { lastupdated, map };
+    return { lastupdated, map, settings };
+  }
+  _getBlockSecondsFromSettings(settings) {
+    const seconds = Number(settings == null ? void 0 : settings.block_seconds);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+  }
+  _syncBlockSecondsFromRuntimeSettings() {
+    var _a2, _b, _c;
+    const settings = (_c = (_b = (_a2 = this.hass) == null ? void 0 : _a2.states[this._getRuntimeMappingEntity()]) == null ? void 0 : _b.attributes) == null ? void 0 : _c.settings;
+    const seconds = this._getBlockSecondsFromSettings(settings);
+    if (seconds !== null && seconds !== this._blockSeconds) {
+      this._blockSeconds = seconds;
+    }
+  }
+  _getSettingsForPublish(sensor_entity, overrides = {}) {
+    var _a2, _b;
+    const existing = ((_b = (_a2 = this.hass.states[sensor_entity]) == null ? void 0 : _a2.attributes) == null ? void 0 : _b.settings) || {};
+    const settings = {
+      ...existing,
+      ...overrides
+    };
+    if (this._getBlockSecondsFromSettings(settings) === null) {
+      settings.block_seconds = this._blockSeconds || DEFAULT_BLOCK_SECONDS;
+    }
+    return settings;
   }
   _compare_mapping_states(sensor_entity1, sensor_entity2) {
     var _a2, _b, _c, _d;
@@ -2073,13 +2417,15 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     }
     return false;
   }
-  async _publish_map(sensor, topic, map) {
+  async _publish_map(sensor, topic, map, settings = null) {
     var _a2, _b;
     const publishStamp = `${Date.now()}-${++this._publishSeq}`;
     const payload = {
       state: `loaded_${publishStamp}`,
+      settings: settings != null ? settings : this._getSettingsForPublish(sensor),
       map
     };
+    logger.debug("E2ALearningCard: publishing payload to", topic, payload);
     const beforeTs = new Date((_b = (_a2 = this.hass.states[sensor]) == null ? void 0 : _a2.last_updated) != null ? _b : 0).getTime();
     try {
       await this.hass.callService("mqtt", "publish", {
@@ -2095,6 +2441,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     if (!ok) {
       throw new Error(sensor + " did not update (timeout)");
     }
+    logger.info(sensor + " updated successfully");
   }
   async _createBackupIfNeeded(type, doDelete = false) {
     var _a2;
@@ -2107,8 +2454,9 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     if (this._compare_mapping_states(backup_sensor, this._getRuntimeMappingEntity())) {
       return true;
     }
+    logger.info("E2A: creating " + type + " backup");
     this._setBusy(true, "Creating " + type + " backup\u2026");
-    const { map } = this._get_mapping_data(this._getRuntimeMappingEntity());
+    const { map, settings } = this._get_mapping_data(this._getRuntimeMappingEntity());
     if (map.length === 0 || doDelete && map.length === 1) {
       logger.warn("E2A: current mapping is empty");
       const ok = await confirm("Current mapping is empty.\n\nDo you want to skip backup of empty mapping?", { yes: "Proceed", no: "Cancel" });
@@ -2120,7 +2468,8 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       await this._publish_map(
         backup_sensor,
         backup_topic,
-        map
+        map,
+        settings
       );
       logger.info("E2A: " + type + " backup created");
       const lastupdated = (_a2 = this.hass.states[this._getRuntimeMappingEntity()]) == null ? void 0 : _a2.last_updated;
@@ -2143,6 +2492,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     }
   }
   _build_new_map(oldMap, newMap) {
+    logger.debug("E2ALearningCard: Building new map", newMap, oldMap);
     const result = [];
     const seen = /* @__PURE__ */ new Set();
     const cleanedNewMap = newMap.map((entry) => {
@@ -2213,9 +2563,11 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   }
   _start_EditMode(proto, code, pressed) {
     var _a2;
+    logger.info("E2ALearningCard: starting editor for ", proto, code);
     this._lockedPcc = { proto, code };
     this._editorStartedAt = Date.now();
     const stateObj = this.hass.states[this._getRuntimeMappingEntity()];
+    logger.debug("E2ALearningCard: map stateObj =", stateObj);
     if (!stateObj)
       return;
     const map = Array.isArray((_a2 = stateObj.attributes) == null ? void 0 : _a2.map) ? stateObj.attributes.map : [];
@@ -2245,8 +2597,10 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     this._draft = { ...this._draft, [field]: value };
   }
   async blockEvents(seconds) {
+    logger.debug("E2ALearningCard: blockEvents called with", seconds);
     if (!this.hass || !seconds || seconds <= 0)
       return;
+    logger.info(`E2ALearningCard: Blocking RF events for ${seconds} seconds`);
     this._blockCounter = seconds;
     if (this._blockCounterInterval)
       clearInterval(this._blockCounterInterval);
@@ -2272,6 +2626,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     }
   }
   async unBlockEvents() {
+    logger.debug("E2ALearningCard: unBlockEvents called");
     if (!this.hass)
       return;
     try {
@@ -2289,6 +2644,30 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       this._blockCounterInterval = null;
     }
     this.requestUpdate();
+  }
+  async _saveBlockSeconds(seconds) {
+    const blockSeconds = Number(seconds);
+    if (!Number.isFinite(blockSeconds) || blockSeconds <= 0)
+      return;
+    this._blockSeconds = blockSeconds;
+    const { map, settings } = this._get_mapping_data(this._getRuntimeMappingEntity());
+    try {
+      await this._publish_map(
+        this._getRuntimeMappingEntity(),
+        this._getRuntimeMappingTopic(),
+        map,
+        {
+          ...settings,
+          block_seconds: blockSeconds
+        }
+      );
+    } catch (err) {
+      logger.error("E2A: failed to save block seconds", err);
+      await confirm(
+        "Failed to save block duration.\nCheck Home Assistant logs for details.",
+        { yes: "Ok", no: "" }
+      );
+    }
   }
   async _onExportMap() {
     const { map } = this._get_mapping_data(this._getRuntimeMappingEntity());
@@ -2387,6 +2766,7 @@ This will replace the current mapping.`,
   }
   async _saveMap(doDelete = false) {
     var _a2;
+    logger.info("E2ALearningCard: Saving edited mapping", doDelete);
     if (!this._lockedPcc)
       return;
     const stateObj = this.hass.states[this._getRuntimeMappingEntity()];
@@ -2428,6 +2808,7 @@ This will replace the current mapping.`,
   }
   async _onUndo() {
     var _a2, _b, _c, _d, _e, _f;
+    logger.info("E2ALearningCard: Undoing");
     if (this._learningMode) {
       const lastupdated = (_a2 = this.hass.states[this._getStepBackupEntity()]) == null ? void 0 : _a2.last_updated;
       if (!lastupdated) {
@@ -2568,6 +2949,7 @@ This will replace the current mapping.`,
               @input=${(e2) => {
       this._blockSeconds = Number(e2.target.value);
     }}
+              @change=${(e2) => this._saveBlockSeconds(e2.target.value)}
             ></ha-input>
           </div>
           <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--e2a-border-radius);">
@@ -2602,6 +2984,9 @@ This will replace the current mapping.`,
             .hass=${this.hass}
             .draft=${this._draft}
             .collection=${map}
+            .entityDomainList=${this._entityDomainList}
+            .customCommonServiceDataKeys=${this._customCommonServiceDataKeys}
+            .prefillServiceData=${this._prefillServiceData}
             .existing=${!!match}
             .disabled=${false}
             @draft-changed=${this._onDraftChanged}

@@ -3,8 +3,9 @@ import { confirm } from "./mixins/confirm.js";
 import { BusyOverlayMixin } from "./mixins/busy_overlay_mixin.js";
 import { formatDateTime } from "./utils/format.js";
 import "./e2a-editor.js";
+import "./e2a-card-editor.js";
 import * as CONFIG from "./e2a-config.js";
-import { logger } from "./utils/e2a-utils.js";
+import { logger, setLogLevel } from "./utils/e2a-utils.js";
 import { e2aTheme } from "./styles/e2a-theme.js";
 import { e2aLayout } from "./styles/e2a-layout.js";
 import { e2aComponents } from "./styles/e2a-components.js";
@@ -39,6 +40,11 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     this._lastevent_store = CONFIG.LASTEVENT_STORE;
     this._blocking_helper = CONFIG.BLOCKING_HELPER;
     this._blockSeconds = CONFIG.DEFAULT_BLOCK_SECONDS;
+    this._entityDomainList = CONFIG.ENTITY_DOMAIN_LIST;
+    this._customCommonServiceDataKeys = CONFIG.CUSTOM_COMMON_SERVICE_DATA_KEYS;
+    this._prefillServiceData = CONFIG.PREFILL_SERVICE_DATA;
+    this._autoUnblock = CONFIG.AUTO_UNBLOCK;
+    this._logLevel = CONFIG.LOG_LEVEL;
 
     this._undoLabel = "Undo last session";
     this._undoHint = "Restores the mapping to the state before starting the last learning session.";
@@ -60,7 +66,81 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   setConfig(config) {
-    this.config = config;
+    this.config = config || {};
+
+    this._entityDomainList = this._normalizeStringList(
+      this.config.entity_domain_list,
+      CONFIG.ENTITY_DOMAIN_LIST
+    );
+    this._customCommonServiceDataKeys = this._normalizeObjectConfig(
+      this.config.custom_common_service_data_keys,
+      CONFIG.CUSTOM_COMMON_SERVICE_DATA_KEYS
+    );
+    this._prefillServiceData = this._normalizeObjectConfig(
+      this.config.prefill_service_data,
+      CONFIG.PREFILL_SERVICE_DATA
+    );
+    this._autoUnblock = this._normalizeBoolean(
+      this.config.auto_unblock,
+      CONFIG.AUTO_UNBLOCK
+    );
+    this._logLevel = this._normalizeNumber(
+      this.config.log_level,
+      CONFIG.LOG_LEVEL
+    );
+    setLogLevel(this._logLevel);
+
+    const configuredBlockSeconds = this._normalizeNumber(
+      this.config.default_block_seconds,
+      null
+    );
+    if (configuredBlockSeconds !== null && configuredBlockSeconds > 0) {
+      this._blockSeconds = configuredBlockSeconds;
+    }
+  }
+
+  static getConfigElement() {
+    return document.createElement("event2action-learning-card-editor");
+  }
+
+  static getStubConfig() {
+    return {
+      entity_domain_list: CONFIG.ENTITY_DOMAIN_LIST,
+      custom_common_service_data_keys: CONFIG.CUSTOM_COMMON_SERVICE_DATA_KEYS,
+      prefill_service_data: CONFIG.PREFILL_SERVICE_DATA,
+      auto_unblock: CONFIG.AUTO_UNBLOCK,
+      log_level: CONFIG.LOG_LEVEL
+    };
+  }
+
+  _normalizeStringList(value, fallback) {
+    if (Array.isArray(value)) {
+      const entries = value.map(item => String(item).trim()).filter(Boolean);
+      return entries.length ? entries : fallback;
+    }
+    if (typeof value === "string") {
+      const entries = value.split(",").map(item => item.trim()).filter(Boolean);
+      return entries.length ? entries : fallback;
+    }
+    return fallback;
+  }
+
+  _normalizeObjectConfig(value, fallback) {
+    return value && typeof value === "object" ? value : fallback;
+  }
+
+  _normalizeBoolean(value, fallback) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      if (value.toLowerCase() === "true") return true;
+      if (value.toLowerCase() === "false") return false;
+    }
+    return fallback;
+  }
+
+  _normalizeNumber(value, fallback) {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : fallback;
   }
 
   _getRuntimeMappingEntity() {
@@ -105,7 +185,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     this._setSessionBackupHint();
 
     // Restore remaining block time from localStorage and re-block if needed
-    if (CONFIG.AUTO_UNBLOCK && this.hass) {
+    if (this._autoUnblock && this.hass) {
       try {
         const savedBlock = localStorage.getItem('e2a_block_time');
         logger.debug("E2ALearningCard: Restoring block time from localStorage:", savedBlock);
@@ -131,7 +211,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     }
 
     this._onBeforeUnload = () => {
-      if (CONFIG.AUTO_UNBLOCK) {
+      if (this._autoUnblock) {
         this.unBlockEvents(); // Unblock events on leaving the card
         logger.debug("E2ALearningCard: unblocking due to page unload");
       }
@@ -171,7 +251,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       logger.warn("E2ALearningCard: Failed to save learning mode to localStorage", e);
     }
 
-    if (CONFIG.AUTO_UNBLOCK) {
+    if (this._autoUnblock) {
       // Save remaining block time to localStorage if blocking is active
       if (this.hass && this.hass.states[this._getBlockingHelperEntity()]?.state === "on") {
         try {
@@ -207,6 +287,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     // Only react to Home Assistant state changes
     if (!changedProps.has("hass")) return;
 
+    this._syncBlockSecondsFromRuntimeSettings();
     this.setLastEventData();
 
     if (!this._hasValidLastData) return;   // No valid data yet
@@ -260,12 +341,40 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     const stateObj = this.hass.states[sensor_entity];
     if (!stateObj) {
       logger.warn("E2ALearningCard: mapping state object not found");
-      return { lastupdated: 0, map: [] };
+      return { lastupdated: 0, map: [], settings: {} };
     }
     const lastupdated = stateObj.last_updated;
     const map = stateObj.attributes?.map || [];
+    const settings = stateObj.attributes?.settings || {};
     logger.debug("E2ALearningCard: fetched mapping data with", map.length, "entries", lastupdated);
-    return { lastupdated, map };
+    return { lastupdated, map, settings };
+  }
+
+  _getBlockSecondsFromSettings(settings) {
+    const seconds = Number(settings?.block_seconds);
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+  }
+
+  _syncBlockSecondsFromRuntimeSettings() {
+    const settings = this.hass?.states[this._getRuntimeMappingEntity()]?.attributes?.settings;
+    const seconds = this._getBlockSecondsFromSettings(settings);
+    if (seconds !== null && seconds !== this._blockSeconds) {
+      this._blockSeconds = seconds;
+    }
+  }
+
+  _getSettingsForPublish(sensor_entity, overrides = {}) {
+    const existing = this.hass.states[sensor_entity]?.attributes?.settings || {};
+    const settings = {
+      ...existing,
+      ...overrides
+    };
+
+    if (this._getBlockSecondsFromSettings(settings) === null) {
+      settings.block_seconds = this._blockSeconds || CONFIG.DEFAULT_BLOCK_SECONDS;
+    }
+
+    return settings;
   }
 
   _compare_mapping_states(sensor_entity1, sensor_entity2) {
@@ -338,10 +447,11 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     return false;
   }
 
-  async _publish_map(sensor, topic, map) {
+  async _publish_map(sensor, topic, map, settings = null) {
     const publishStamp = `${Date.now()}-${++this._publishSeq}`;
     const payload = {
       state: `loaded_${publishStamp}`,
+      settings: settings ?? this._getSettingsForPublish(sensor),
       map
     };
     logger.debug("E2ALearningCard: publishing payload to", topic, payload);
@@ -381,7 +491,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
 
     logger.info("E2A: creating " + type + " backup");
     this._setBusy(true, "Creating " + type + " backup…");
-    const { map } = this._get_mapping_data(this._getRuntimeMappingEntity());
+    const { map, settings } = this._get_mapping_data(this._getRuntimeMappingEntity());
 
     if (map.length === 0 || (doDelete && map.length === 1)) {
       logger.warn("E2A: current mapping is empty");
@@ -394,7 +504,8 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       await this._publish_map(
         backup_sensor,
         backup_topic,
-        map
+        map,
+        settings
       );
       logger.info("E2A: " + type + " backup created");
       const lastupdated = this.hass.states[this._getRuntimeMappingEntity()]?.last_updated;
@@ -599,6 +710,32 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       this._blockCounterInterval = null;
     }
     this.requestUpdate();
+  }
+
+  async _saveBlockSeconds(seconds) {
+    const blockSeconds = Number(seconds);
+    if (!Number.isFinite(blockSeconds) || blockSeconds <= 0) return;
+
+    this._blockSeconds = blockSeconds;
+    const { map, settings } = this._get_mapping_data(this._getRuntimeMappingEntity());
+
+    try {
+      await this._publish_map(
+        this._getRuntimeMappingEntity(),
+        this._getRuntimeMappingTopic(),
+        map,
+        {
+          ...settings,
+          block_seconds: blockSeconds
+        }
+      );
+    } catch (err) {
+      logger.error("E2A: failed to save block seconds", err);
+      await confirm(
+        "Failed to save block duration.\nCheck Home Assistant logs for details.",
+        { yes: "Ok", no: "" }
+      );
+    }
   }
 
   async _onExportMap() {
@@ -907,6 +1044,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
               style="width: 100px;"
               .value=${String(this._blockSeconds)}
               @input=${(e) => { this._blockSeconds = Number(e.target.value); }}
+              @change=${(e) => this._saveBlockSeconds(e.target.value)}
             ></ha-input>
           </div>
           <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--e2a-border-radius);">
@@ -943,6 +1081,9 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
             .hass=${this.hass}
             .draft=${this._draft}
             .collection=${map}
+            .entityDomainList=${this._entityDomainList}
+            .customCommonServiceDataKeys=${this._customCommonServiceDataKeys}
+            .prefillServiceData=${this._prefillServiceData}
             .existing=${!!match}
             .disabled=${false}
             @draft-changed=${this._onDraftChanged}
