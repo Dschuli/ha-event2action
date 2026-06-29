@@ -64,11 +64,75 @@ class Event2ActionLearningCardEditor extends LitElement {
   }
 
   _onDomainsChanged(event) {
-    const domains = event.target.value
-      .split(",")
-      .map(domain => domain.trim())
+    const domains = Array.from(event.target.selectedOptions || [])
+      .map(option => option.value)
       .filter(Boolean);
     this._setConfigValue("entity_domain_list", domains);
+  }
+
+  _onDomainsSelectorChanged(event) {
+    const value = event.detail?.value;
+    this._setConfigValue(
+      "entity_domain_list",
+      Array.isArray(value) ? value.filter(Boolean) : []
+    );
+  }
+
+  _getAvailableDomains(selectedDomains = []) {
+    const domains = new Set([
+      ...DEFAULT_CONFIG.entity_domain_list,
+      ...(selectedDomains || [])
+    ]);
+
+    Object.keys(this.hass?.states || {}).forEach(entityId => {
+      const domain = entityId.split(".")[0];
+      if (domain) domains.add(domain);
+    });
+
+    return Array.from(domains).sort((a, b) => a.localeCompare(b));
+  }
+
+  _renderDomainSelector(selectedDomains) {
+    const selected = Array.isArray(selectedDomains) ? selectedDomains : [];
+    const options = this._getAvailableDomains(selected).map(domain => ({
+      value: domain,
+      label: domain
+    }));
+
+    if (customElements.get("ha-selector")) {
+      return html`
+        <ha-selector
+          .hass=${this.hass}
+          .selector=${{
+          select: {
+            multiple: true,
+            mode: "dropdown",
+            options
+          }
+        }}
+          .value=${selected}
+          @value-changed=${this._onDomainsSelectorChanged}
+        ></ha-selector>
+      `;
+    }
+
+    return html`
+      <select
+        multiple
+        size=${Math.min(Math.max(options.length, 5), 12)}
+        .value=${selected[0] || ""}
+        @change=${this._onDomainsChanged}
+      >
+        ${options.map(option => html`
+          <option
+            value=${option.value}
+            ?selected=${selected.includes(option.value)}
+          >
+            ${option.label}
+          </option>
+        `)}
+      </select>
+    `;
   }
 
   _onJsonChanged(key, textKey, errorKey, event) {
@@ -116,12 +180,8 @@ class Event2ActionLearningCardEditor extends LitElement {
       <div class="editor">
         <label class="field">
           <span>Entity domains</span>
-          <input
-            type="text"
-            .value=${(config.entity_domain_list || []).join(", ")}
-            @change=${this._onDomainsChanged}
-          />
-          <small>Comma-separated domains shown by the target entity selector.</small>
+          ${this._renderDomainSelector(config.entity_domain_list)}
+          <small>Entity domains shown by the target entity selector.</small>
         </label>
 
         <label class="field">

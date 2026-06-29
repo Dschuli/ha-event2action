@@ -1886,8 +1886,69 @@ class Event2ActionLearningCardEditor extends s {
     });
   }
   _onDomainsChanged(event) {
-    const domains = event.target.value.split(",").map((domain) => domain.trim()).filter(Boolean);
+    const domains = Array.from(event.target.selectedOptions || []).map((option) => option.value).filter(Boolean);
     this._setConfigValue("entity_domain_list", domains);
+  }
+  _onDomainsSelectorChanged(event) {
+    var _a2;
+    const value = (_a2 = event.detail) == null ? void 0 : _a2.value;
+    this._setConfigValue(
+      "entity_domain_list",
+      Array.isArray(value) ? value.filter(Boolean) : []
+    );
+  }
+  _getAvailableDomains(selectedDomains = []) {
+    var _a2;
+    const domains = /* @__PURE__ */ new Set([
+      ...DEFAULT_CONFIG.entity_domain_list,
+      ...selectedDomains || []
+    ]);
+    Object.keys(((_a2 = this.hass) == null ? void 0 : _a2.states) || {}).forEach((entityId) => {
+      const domain = entityId.split(".")[0];
+      if (domain)
+        domains.add(domain);
+    });
+    return Array.from(domains).sort((a2, b) => a2.localeCompare(b));
+  }
+  _renderDomainSelector(selectedDomains) {
+    const selected = Array.isArray(selectedDomains) ? selectedDomains : [];
+    const options = this._getAvailableDomains(selected).map((domain) => ({
+      value: domain,
+      label: domain
+    }));
+    if (customElements.get("ha-selector")) {
+      return x`
+        <ha-selector
+          .hass=${this.hass}
+          .selector=${{
+        select: {
+          multiple: true,
+          mode: "dropdown",
+          options
+        }
+      }}
+          .value=${selected}
+          @value-changed=${this._onDomainsSelectorChanged}
+        ></ha-selector>
+      `;
+    }
+    return x`
+      <select
+        multiple
+        size=${Math.min(Math.max(options.length, 5), 12)}
+        .value=${selected[0] || ""}
+        @change=${this._onDomainsChanged}
+      >
+        ${options.map((option) => x`
+          <option
+            value=${option.value}
+            ?selected=${selected.includes(option.value)}
+          >
+            ${option.label}
+          </option>
+        `)}
+      </select>
+    `;
   }
   _onJsonChanged(key, textKey, errorKey, event) {
     const text = event.target.value;
@@ -1930,12 +1991,8 @@ class Event2ActionLearningCardEditor extends s {
       <div class="editor">
         <label class="field">
           <span>Entity domains</span>
-          <input
-            type="text"
-            .value=${(config.entity_domain_list || []).join(", ")}
-            @change=${this._onDomainsChanged}
-          />
-          <small>Comma-separated domains shown by the target entity selector.</small>
+          ${this._renderDomainSelector(config.entity_domain_list)}
+          <small>Entity domains shown by the target entity selector.</small>
         </label>
 
         <label class="field">
