@@ -683,11 +683,14 @@ __publicField(ConfirmModal, "styles", i$1`
       color: var(--secondary-text-color);
     }
   `);
-customElements.define("confirm-modal", ConfirmModal);
+const CONFIRM_MODAL_TAG = "event2action-confirm-modal";
+if (!customElements.get(CONFIRM_MODAL_TAG)) {
+  customElements.define(CONFIRM_MODAL_TAG, ConfirmModal);
+}
 function confirm(message = "Are you sure?", labels = {}) {
   return new Promise((resolve) => {
     var _a2, _b;
-    const modal = document.createElement("confirm-modal");
+    const modal = document.createElement(CONFIRM_MODAL_TAG);
     modal.message = message;
     modal.confirmLabel = (_a2 = labels.yes) != null ? _a2 : "Yes";
     modal.cancelLabel = (_b = labels.no) != null ? _b : "No";

@@ -1,5 +1,5 @@
 // confirm.js
-import "./confirm-dialog-mixin.js";
+import { CONFIRM_MODAL_TAG } from "./confirm-dialog-mixin.js";
 
 /**
  * Shows a confirmation dialog and resolves to true / false.
@@ -11,7 +11,7 @@ import "./confirm-dialog-mixin.js";
 export function confirm(message = "Are you sure?", labels = {}) {
   // console.log("confirm(): Showing confirmation dialog with message:", message, labels);
   return new Promise((resolve) => {
-    const modal = document.createElement("confirm-modal");
+    const modal = document.createElement(CONFIRM_MODAL_TAG);
     modal.message = message;
     modal.confirmLabel = labels.yes ?? "Yes";
     modal.cancelLabel = labels.no ?? "No";

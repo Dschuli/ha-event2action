@@ -127,4 +127,8 @@ export class ConfirmModal extends LitElement {
   }
 }
 
-customElements.define("confirm-modal", ConfirmModal);
+export const CONFIRM_MODAL_TAG = "event2action-confirm-modal";
+
+if (!customElements.get(CONFIRM_MODAL_TAG)) {
+  customElements.define(CONFIRM_MODAL_TAG, ConfirmModal);
+}
