@@ -1,14 +1,18 @@
+# Disclaimer
+Install procedure as HACS custom card is just being tested (needs a public repository). So just wait until these tests are finalized - I'll let you know, when this project is ready.
+
 # Event2Action Mapper for Home Assistant
 
-Event2Action is a Home Assistant editor and runtime for mapping normalized button events to Home Assistant actions. It focuses on the Lovelace learning card, MQTT-backed runtime map storage, helper scripts, and feeder automations for `esphome.rf433` and `zha_event`.
+Event2Action is a Home Assistant editor and runtime for mapping normalized button events to Home Assistant actions. It focuses on the Lovelace learning card, MQTT-backed runtime map storage, helper scripts, and feeder automations for `esphome.rf433` and `zha_event`.  feeder automation has to to is sen
 
-Bring your own event source. For RF433, this project expects Home Assistant to receive `esphome.rf433` events with protocol/code data. For Zigbee buttons, it consumes native `zha_event` payloads.
+For RF433, this project expects Home Assistant to receive `esphome.rf433` events with protocol/code data. For Zigbee buttons, it consumes native `zha_event` payloads. 
+
+Bring your own event source. Just add another feeder automation, triggered by any event (type) of you choice, eg. an ESPHome based IR reiceiver to act on any button press of an (old) IR remote. All this feeder automation has to do is to fwd an event with a distinctive code/protocol payload. `ZHA_event` is a good example of how that works.
 
 ## Documentation
 
 - **[QUICKSTART.md](QUICKSTART.md)** - Minimal setup path
 - **[e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md)** - Detailed editor features and usage
-- **[HELPERS.md](HELPERS.md)** - Helper entity setup
 
 ## Features
 
@@ -31,7 +35,7 @@ Bring your own event source. For RF433, this project expects Home Assistant to r
   - RF433 source that fires Home Assistant events named `esphome.rf433`
   - Zigbee devices using ZHA, which emit `zha_event`
 
-## Installation
+## Installation: to be updated - not final
 
 ### 1. Home Assistant Files
 
