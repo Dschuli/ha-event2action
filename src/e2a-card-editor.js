@@ -84,6 +84,10 @@ class Event2ActionLearningCardEditor extends LitElement {
       ...(selectedDomains || [])
     ]);
 
+    Object.keys(this.hass?.services || {}).forEach(domain => {
+      if (domain) domains.add(domain);
+    });
+
     Object.keys(this.hass?.states || {}).forEach(entityId => {
       const domain = entityId.split(".")[0];
       if (domain) domains.add(domain);

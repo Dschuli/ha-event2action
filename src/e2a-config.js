@@ -5,20 +5,26 @@
 // IMPORTANT: After making changes to this file, clear your browser cache and
 // Home Assistant companion app cache (if used) to ensure the updated code is loaded.
 
-// Entity domains supported for learning/edit mode
-export const ENTITY_DOMAIN_LIST = ["switch", "light", "cover", "script", "automation"];
+// Entity domains shown by default in the learning/edit target selector.
+export const ENTITY_DOMAIN_LIST = [
+	"switch",
+	"light",
+	"cover",
+	"script",
+	"automation",
+	"scene",
+	"input_boolean",
+	"button",
+	"fan",
+	"media_player"
+];
 
-/* Other common domains (not included by default; add avove if needed):
-*   "climate",      // AC/heating controls - requires complex service data (temperature, mode, etc.)
-*    "fan",          // Fans - typically needs speed/direction parameters
+/* Other common action domains (selectable when present in Home Assistant):
+*   "climate",      // AC/heating controls - usually requires service data
 *   "lock",         // Smart locks - security-sensitive, use with caution
-*   "media_player", // Media devices - requires service data (volume, source, etc.)
-*   "scene",        // Scenes - similar to script but typically no parameters needed
-*   "input_boolean",// Toggle helpers - useful for custom logic
 *   "input_select", // Select helpers - requires specific option values
-*   "button",       // Button entities - only support "press" service
-*   "vacuum",       // Robot vacuums - needs service data (zones, modes, etc.)
-*   "camera",       // Cameras - limited RF use cases
+*   "vacuum",       // Robot vacuums - usually needs zones/modes
+*   "camera",       // Cameras - limited remote-button use cases
 *   "alarm_control_panel", // Alarm systems - security-sensitive
 */
 

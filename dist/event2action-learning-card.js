@@ -775,7 +775,18 @@ function formatDateTime(hass, date = new Date()) {
   out = out.replace(/\b(Nov|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Dec)\b/g, "$1.");
   return out;
 }
-const ENTITY_DOMAIN_LIST = ["switch", "light", "cover", "script", "automation"];
+const ENTITY_DOMAIN_LIST = [
+  "switch",
+  "light",
+  "cover",
+  "script",
+  "automation",
+  "scene",
+  "input_boolean",
+  "button",
+  "fan",
+  "media_player"
+];
 const CUSTOM_COMMON_SERVICE_DATA_KEYS = {
   "*dimmer_control|script.turn_on": [
     { label: "light_entity", value: "light_entity", default: "" },
@@ -1898,12 +1909,16 @@ class Event2ActionLearningCardEditor extends s {
     );
   }
   _getAvailableDomains(selectedDomains = []) {
-    var _a2;
+    var _a2, _b;
     const domains = /* @__PURE__ */ new Set([
       ...DEFAULT_CONFIG.entity_domain_list,
       ...selectedDomains || []
     ]);
-    Object.keys(((_a2 = this.hass) == null ? void 0 : _a2.states) || {}).forEach((entityId) => {
+    Object.keys(((_a2 = this.hass) == null ? void 0 : _a2.services) || {}).forEach((domain) => {
+      if (domain)
+        domains.add(domain);
+    });
+    Object.keys(((_b = this.hass) == null ? void 0 : _b.states) || {}).forEach((entityId) => {
       const domain = entityId.split(".")[0];
       if (domain)
         domains.add(domain);
