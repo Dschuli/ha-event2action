@@ -428,6 +428,78 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     }
   }
 
+  _getSetupIssues() {
+    if (!this.hass) return [];
+
+    const requiredEntities = [
+      this._getRuntimeMappingEntity(),
+      this._getSessionBackupEntity(),
+      this._getStepBackupEntity(),
+      this._getLastEventStoreEntity(),
+      this._getBlockingHelperEntity()
+    ];
+
+    const missingEntities = requiredEntities.filter(entityId => !this.hass.states[entityId]);
+    const missingServices = [];
+
+    if (!this.hass.services?.mqtt?.publish) {
+      missingServices.push("mqtt.publish");
+    }
+
+    if (!this.hass.services?.script?.temporary_toggle) {
+      missingServices.push("script.temporary_toggle");
+    }
+
+    const issues = [];
+    if (missingEntities.length) {
+      issues.push({
+        title: "Missing required Event2Action entities",
+        items: missingEntities
+      });
+    }
+    if (missingServices.length) {
+      issues.push({
+        title: "Missing required Home Assistant services",
+        items: missingServices
+      });
+    }
+
+    return issues;
+  }
+
+  _renderSetupIssues(issues) {
+    if (!issues.length) return null;
+
+    return html`
+      <ha-card header="Event2Action Learning">
+        <div class="content">
+          <div class="setup-alert">
+            <h3>Event2Action package setup is incomplete</h3>
+            <p>
+              The card is installed, but the Home Assistant package entities or services are not available yet.
+              This usually means <code>packages/event2action.yaml</code> has not been installed under
+              <code>/config/packages/</code>, <code>packages: !include_dir_named packages</code> is missing from
+              <code>configuration.yaml</code>, or Home Assistant has not been restarted/reloaded after setup.
+            </p>
+
+            ${issues.map(issue => html`
+              <p><b>${issue.title}</b></p>
+              <ul>
+                ${issue.items.map(item => html`<li><code>${item}</code></li>`)}
+              </ul>
+            `)}
+
+            <p>
+              Install the package file, enable package loading in <code>configuration.yaml</code> if needed,
+              then restart or reload Home Assistant. See <code>QUICKSTART.md</code> for the complete setup steps.
+            </p>
+          </div>
+        </div>
+      </ha-card>
+      ${this.renderBusyOverlay()}
+    `;
+  }
+
   /* =========================================================
    * Data Operations (MQTT & Backup Management)
    * ========================================================= */
@@ -980,13 +1052,33 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   render() {
+    if (!this.hass) {
+      return html`
+        <ha-card header="Event2Action Learning">
+          <div class="content">
+            <p>Loading Home Assistant state.</p>
+          </div>
+        </ha-card>
+        ${this.renderBusyOverlay()}
+      `;
+    }
+
+    const setupIssues = this._getSetupIssues();
+    if (setupIssues.length) {
+      return this._renderSetupIssues(setupIssues);
+    }
+
     const mapSensor = this.hass.states[this._getRuntimeMappingEntity()];
 
     if (!this._hasValidLastData) {
       return html`
       <ha-card header="Event2Action Learning">
         <div class="content">
-          <p>Waiting for event sensor data.</p>
+          <p>Waiting for first Event2Action event.</p>
+          <p>
+            Package setup looks available. If this is a fresh install, press a configured RF433/ZHA button
+            or verify your feeder automation/event source from <code>QUICKSTART.md</code>.
+          </p>
         </div>
       </ha-card>
       ${this.renderBusyOverlay()}
@@ -1156,6 +1248,18 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       li > pre {
         margin: 0;
       }
+    }
+    .setup-alert {
+      border-left: 4px solid var(--warning-color, #f4b400);
+      background: var(--secondary-background-color);
+      padding: 12px 16px;
+      border-radius: var(--e2a-border-radius);
+    }
+    .setup-alert h3 {
+      margin-top: 0;
+    }
+    .setup-alert code {
+      font-family: var(--code-font-family, monospace);
     }
     .e2a-fallback-switch {
       width: 40px;

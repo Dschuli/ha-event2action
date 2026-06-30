@@ -8,49 +8,39 @@ Set up the Event2Action editor and runtime in Home Assistant.
 - [ ] MQTT broker configured
 - [ ] An RF433 source that emits `esphome.rf433`events, or Zigbee devices using ZHA (emitting `zha` event ), or another event source with a corresponding feeder automation
 
-## 1. Install Home Assistant Files
+## 1. Install the Home Assistant Package
 
-Copy the files into your Home Assistant config directory:
+HACS installs the Lovelace card only. It does not copy the Home Assistant package into your config directory.
+
+From the Home Assistant Terminal/SSH add-on, download the package file into `/config/packages/`:
 
 ```bash
-cp homeassistant/e2a_mqtt_sensors.yaml /config/
-cp homeassistant/e2a_scripts.yaml /config/
-cp homeassistant/e2a_automations.yaml /config/
-cp -r homeassistant/www/* /config/www/
+mkdir -p /config/packages
+wget -O /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
 ```
 
-Add these includes to `configuration.yaml`:
+If your terminal does not have `wget`, use `curl` instead:
+
+```bash
+mkdir -p /config/packages
+curl -L -o /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
+```
+
+Make sure package loading is enabled in `configuration.yaml`:
 
 ```yaml
-mqtt: !include e2a_mqtt_sensors.yaml
-script: !include e2a_scripts.yaml
-automation: !include e2a_automations.yaml
+homeassistant:
+  packages: !include_dir_named packages
 ```
 
-Restart Home Assistant.
+If you already have a `homeassistant:` section, add only the `packages:` line under it. Restart Home Assistant after adding the package or changing `configuration.yaml`.
 
-## 2. Create Helper Entities
-
-In Home Assistant, go to Settings -> Devices & Services -> Helpers -> Create Helper.
-
-Create:
-
-- Text helper named `Event2Action Last Event Store`
-- Toggle helper named `Event2Action Block Events`
-
-The expected entity IDs are:
-
-- `input_text.event2action_last_event_store`
-- `input_boolean.event2action_block_events`
-
-See [HELPERS.md](HELPERS.md) if Home Assistant generates different entity IDs.
-
-## 3. Add the Dashboard Card
+## 2. Add the Dashboard Card
 
 Add this resource in Settings -> Dashboards -> Resources:
 
 ```yaml
-url: /local/event2action/e2a-learning-card.js
+url: /hacsfiles/ha-event2action/event2action-learning-card.js
 type: module
 ```
 
@@ -78,7 +68,7 @@ prefill_service_data: {}
 
 Use a panel view for the cleanest layout.
 
-## 4. Verify the Event Flow
+## 3. Verify the Event Flow
 
 Open Developer Tools -> Events.
 
@@ -121,14 +111,14 @@ Optional example: if you later install a separate `ha-dimmer-control-by-handheld
 
 **No bus event appears**
 
-- Confirm `e2a_automations.yaml` is included.
+- Confirm `/config/packages/event2action.yaml` is installed and Home Assistant was restarted.
 - Confirm the feeder automation is enabled.
 - Confirm the incoming event is named `esphome.rf433` or `zha_event`.
 
 **Card not showing**
 
-- Verify `/config/www/event2action/e2a-learning-card.js` exists.
-- Verify the dashboard resource URL is `/local/event2action/e2a-learning-card.js`.
+- Verify the HACS frontend file exists under `/config/www/community/ha-event2action/`.
+- Verify the dashboard resource URL is `/hacsfiles/ha-event2action/event2action-learning-card.js`.
 - Clear the browser cache.
 
 **Mapping does not execute**

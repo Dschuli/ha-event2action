@@ -785,7 +785,8 @@ const ENTITY_DOMAIN_LIST = [
   "input_boolean",
   "button",
   "fan",
-  "media_player"
+  "media_player",
+  "climate"
 ];
 const CUSTOM_COMMON_SERVICE_DATA_KEYS = {
   "*dimmer_control|script.turn_on": [
@@ -2476,6 +2477,72 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       this._undoHint = "No session backup available to undo.";
     }
   }
+  _getSetupIssues() {
+    var _a2, _b, _c, _d;
+    if (!this.hass)
+      return [];
+    const requiredEntities = [
+      this._getRuntimeMappingEntity(),
+      this._getSessionBackupEntity(),
+      this._getStepBackupEntity(),
+      this._getLastEventStoreEntity(),
+      this._getBlockingHelperEntity()
+    ];
+    const missingEntities = requiredEntities.filter((entityId) => !this.hass.states[entityId]);
+    const missingServices = [];
+    if (!((_b = (_a2 = this.hass.services) == null ? void 0 : _a2.mqtt) == null ? void 0 : _b.publish)) {
+      missingServices.push("mqtt.publish");
+    }
+    if (!((_d = (_c = this.hass.services) == null ? void 0 : _c.script) == null ? void 0 : _d.temporary_toggle)) {
+      missingServices.push("script.temporary_toggle");
+    }
+    const issues = [];
+    if (missingEntities.length) {
+      issues.push({
+        title: "Missing required Event2Action entities",
+        items: missingEntities
+      });
+    }
+    if (missingServices.length) {
+      issues.push({
+        title: "Missing required Home Assistant services",
+        items: missingServices
+      });
+    }
+    return issues;
+  }
+  _renderSetupIssues(issues) {
+    if (!issues.length)
+      return null;
+    return x`
+      <ha-card header="Event2Action Learning">
+        <div class="content">
+          <div class="setup-alert">
+            <h3>Event2Action package setup is incomplete</h3>
+            <p>
+              The card is installed, but the Home Assistant package entities or services are not available yet.
+              This usually means <code>packages/event2action.yaml</code> has not been installed under
+              <code>/config/packages/</code>, <code>packages: !include_dir_named packages</code> is missing from
+              <code>configuration.yaml</code>, or Home Assistant has not been restarted/reloaded after setup.
+            </p>
+
+            ${issues.map((issue) => x`
+              <p><b>${issue.title}</b></p>
+              <ul>
+                ${issue.items.map((item) => x`<li><code>${item}</code></li>`)}
+              </ul>
+            `)}
+
+            <p>
+              Install the package file, enable package loading in <code>configuration.yaml</code> if needed,
+              then restart or reload Home Assistant. See <code>QUICKSTART.md</code> for the complete setup steps.
+            </p>
+          </div>
+        </div>
+      </ha-card>
+      ${this.renderBusyOverlay()}
+    `;
+  }
   async _waitForSensorUpdate(entityId, sinceTs, timeoutMs = 5e3, intervalMs = 200) {
     logger.debug(`E2ALearningCard: waiting for ${entityId} to update since ${new Date(sinceTs).toISOString()}`);
     const start = Date.now();
@@ -2966,12 +3033,30 @@ This will replace the current mapping.`,
   }
   render() {
     var _a2, _b, _c;
+    if (!this.hass) {
+      return x`
+        <ha-card header="Event2Action Learning">
+          <div class="content">
+            <p>Loading Home Assistant state.</p>
+          </div>
+        </ha-card>
+        ${this.renderBusyOverlay()}
+      `;
+    }
+    const setupIssues = this._getSetupIssues();
+    if (setupIssues.length) {
+      return this._renderSetupIssues(setupIssues);
+    }
     const mapSensor = this.hass.states[this._getRuntimeMappingEntity()];
     if (!this._hasValidLastData) {
       return x`
       <ha-card header="Event2Action Learning">
         <div class="content">
-          <p>Waiting for event sensor data.</p>
+          <p>Waiting for first Event2Action event.</p>
+          <p>
+            Package setup looks available. If this is a fresh install, press a configured RF433/ZHA button
+            or verify your feeder automation/event source from <code>QUICKSTART.md</code>.
+          </p>
         </div>
       </ha-card>
       ${this.renderBusyOverlay()}
@@ -3137,6 +3222,18 @@ __publicField(E2ALearningCard, "styles", [
       li > pre {
         margin: 0;
       }
+    }
+    .setup-alert {
+      border-left: 4px solid var(--warning-color, #f4b400);
+      background: var(--secondary-background-color);
+      padding: 12px 16px;
+      border-radius: var(--e2a-border-radius);
+    }
+    .setup-alert h3 {
+      margin-top: 0;
+    }
+    .setup-alert code {
+      font-family: var(--code-font-family, monospace);
     }
     .e2a-fallback-switch {
       width: 40px;

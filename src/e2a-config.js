@@ -2,10 +2,7 @@
  * Event2Action Learning Card Configuration
  * ========================================================= */
 
-// IMPORTANT: After making changes to this file, clear your browser cache and
-// Home Assistant companion app cache (if used) to ensure the updated code is loaded.
-
-// Entity domains shown by default in the learning/edit target selector.
+// Entity domains shown by default in the learning/edit target selector - if active in the HA configuration.
 export const ENTITY_DOMAIN_LIST = [
 	"switch",
 	"light",
@@ -16,11 +13,11 @@ export const ENTITY_DOMAIN_LIST = [
 	"input_boolean",
 	"button",
 	"fan",
-	"media_player"
+	"media_player",
+	"climate"
 ];
 
 /* Other common action domains (selectable when present in Home Assistant):
-*   "climate",      // AC/heating controls - usually requires service data
 *   "lock",         // Smart locks - security-sensitive, use with caution
 *   "input_select", // Select helpers - requires specific option values
 *   "vacuum",       // Robot vacuums - usually needs zones/modes

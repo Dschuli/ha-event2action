@@ -3,12 +3,12 @@
 
 > **Note**: This is the detailed reference for the Event2Action learning interface and editor.
 > For initial setup, see [QUICKSTART.md](QUICKSTART.md) or [README.md](README.md).
-> For helper entity setup, see [HELPERS.md](HELPERS.md).
+> The required Home Assistant helpers, MQTT sensors, scripts, and automations are provided by `packages/event2action.yaml`.
 >
 
 ## Overview
 
-The Event2Action Learning Card is a custom Lovelace card for Home Assistant that provides an interactive interface for learning, mapping, and managing normalized event codes. It allows you to associate protocol/code pairs with Home Assistant entities and actions without manually editing configuration files.
+The Event2Action Learning Card is a custom Lovelace card for Home Assistant that provides an interactive interface for learning, mapping, and managing normalized event codes. It allows you to associate protocol/code pairs with Home Assistant entities and actions without manually editing configuration files or creating a large number of automations.
 
 ## Components
 
@@ -28,12 +28,12 @@ Configuration constants and entity references used throughout the system.
 ## Features
 
 ### Learning Mode
-- **Auto-detection**: Automatically detects (new) RF codes when a remote button is pressed
-- **Interactive**: Opens the editor immediately when a (new) code is detected
+- **Auto-detection**: Automatically detects new normalized button events when a remote button is pressed
+- **Interactive**: Opens the editor immediately when a new code is detected
 - **Session Management**: Creates automatic backups before starting a learning session
 
 ### Code Mapping
-- **Entity Assignment**: Map RF codes to any Home Assistant entity (switch, light, cover, script)
+- **Entity Assignment**: Map event codes to Home Assistant entities such as switches, lights, covers, scripts, scenes, fans, media players, and climate entities
 - **Service Selection**: Choose which service to call (turn_on, turn_off, toggle, etc.)
 - **Service Data**: Add optional JSON service data for advanced control (brightness, RGB color, etc.)
 - **Active/Inactive**: Enable or disable individual mappings without deleting them
@@ -66,7 +66,8 @@ Before using the Event2Action Learning Card, ensure you have completed the initi
 
 - **Quick Setup**: See [QUICKSTART.md](QUICKSTART.md) for a streamlined 5-minute setup guide
 - **Detailed Installation**: See [README.md](README.md) for complete installation instructions
-- **Helper Entities**: See [HELPERS.md](HELPERS.md) for creating required `input_text` and `input_boolean` helpers
+- **Home Assistant Package**: Install `packages/event2action.yaml` into `/config/packages/event2action.yaml`, enable package loading in `configuration.yaml`, and restart Home Assistant
+- **Setup Diagnostics**: The card shows a setup warning if the required package entities or services are missing
 
 ---
 
@@ -89,12 +90,12 @@ Before using the Event2Action Learning Card, ensure you have completed the initi
    - The system creates a session backup automatically
 
 2. **Press a Remote Button**
-   - Press any button on your 433MHz remote
+   - Press any button from your configured event source, such as an RF433 or ZHA remote
    - The editor opens automatically with the detected code
 
 3. **Configure the Mapping**
-   - **Entity**: Select which Home Assistant entity to control
-   - **Service**: Choose the service to call (e.g., `light.turn_on`)
+   - **Entity**: Select which Home Assistant entity to control.
+   - **Service**: Choose the service to call (e.g., `light.turn_on`).
    - **Service Data** (optional): Add JSON parameters like brightness or color
    - **Active**: Enable/disable this mapping
    - **Metadata** (optional): Add Remote, Type, Button, Channel for organization
@@ -158,7 +159,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 ### Required Fields
 
 - **Entity**: The Home Assistant entity to control
-  - Supports: `switch`, `light`, `cover`, `script`
+  - Entities from domains as: `switch`, `light`, `cover`, `script`, `automation`, `scene`, `input_boolean`, `button`, `fan`, `media_player`, and `climate` can be selected
   - Additional domains can be configured in the card configuration editor
   - Uses entity picker with domain filtering
 
@@ -166,18 +167,23 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
   - Auto-populated based on entity domain
   - Supports custom services
   - Examples: `light.turn_on`, `switch.toggle`, `cover.set_cover_position`
+  
+- **Active**: Enable/disable the mapping (default: ON)
 
-### Optional Fields
-
-- **Service Data**: JSON object with service parameters
+- **Service Data**: JSON object with service parameters for entities requiring/supporting service data
   - Validated in real-time
-  - Common parameters available via dropdown (e.g for `light.turn_on`):
+  - Common parameters available via dropdown, for example:
     - **Light**: brightness, rgb_color, color_temp, transition
     - **Cover**: position
+    - **Fan**: percentage, preset mode, oscillation, direction
     - **Media Player**: volume_level
-    Note: The common parameters by service can be customized/extended in the card configuration editor
+    - **Climate**: temperature, HVAC mode, fan mode
+  - Common parameters by service can be customized or extended in the card configuration editor
+  - 
 
-- **Active**: Enable/disable the mapping (default: ON)
+### Optional Fields 
+These fields have no effect on the event processing. You can use them to organize/document your mappings.
+While the editor workd for any sort of event (with the right feeder automation), the name of these 4 fields clearly indicate the main intended use and origin of this custom card/package.
 
 - **Remote**: Name/identifier of the remote control
   - Auto-suggests from existing values
@@ -185,11 +191,12 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 - **Type**: Device type category
   - Auto-suggests from existing values
-  - Examples: "fan", "blind", "outlet"
+  - Examples: "IT1500", "ELRO AB440R", "Remote Scene"
 
 - **Button**: Button identifier
   - Auto-suggests from existing values
   - Examples: "A", "1", "power", "up"
+  - For e.g. Zigbee RemoteScene (via zha feederautomation) this field will be prefilled
 
 - **Channel**: Channel identifier for multi-channel devices
   - Auto-suggests from existing values
@@ -200,12 +207,15 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 - **Add Custom Common Parameters**:
   - You can add custom common parameters to the service data via the dropdown, as defined in the card configuration.
   - These parameters are available for quick insertion and can be tailored to your use case.
+  - For service data that include entity info, you can use a provided secondary entity picker. You pick will be included at cursor position.
 
 - **Preset Service Data for Entity/Service**:
-  - If a preset for a specific entity/service combination is defined in the config, the editor will automatically suggest or prefill the corresponding service data.
+  - If a preset for a specific entity/service combination is defined in the config, the editor will automatically suggest or prefill the corresponding service data. E.g. if you want all light entities, where the name starts with "liv" to turn on with 75% brightness:
+  
+ `{ "liv*|light.turn_on": "{\"brightness\":\"75%\"}" }`
 
 - **Select Entity Option in Common Params**:
-  - When using the common parameter dropdown, you can choose the special option "Select entity" to insert an entity_id at the current cursor position in the service data field. This is especially useful for scripts or advanced automations. For `script.turn` on only
+  - When using the common parameter dropdown, you can choose the special option "Select entity" to insert an entity_id at the current cursor position in the service data field. This is especially useful for `script.turn_on` and advanced automations.
 
 ### Editor Behavior
 
@@ -221,10 +231,10 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 ### Data Flow
 
-1. **RF Event Reception**
-   - External RF433 event source fires an `esphome.rf433` event
-   - Event data sent to MQTT topic
-  - Home Assistant stores in `input_text.event2action_last_event_store` (legacy alias: `input_text.rf433_last_event_store`)
+1. **Event Reception**
+   - An event source fires a Home Assistant event, such as `esphome.rf433` or `zha_event`
+   - The packaged feeder automation normalizes the event and forwards it to `event2action_bus`
+   - The packaged bus handler stores the latest normalized event in `input_text.event2action_last_event_store`
 
 2. **Card Detection**
    - Learning card monitors the input_text entity
@@ -232,27 +242,27 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
    - Filters out "old" events to prevent duplicate processing
 
 3. **Mapping Lookup**
-   - Card checks if RF code exists in current mapping
+   - Card checks if the event code exists in the current mapping
    - Displays existing action data or "unmapped" status
 
 4. **Editor Workflow**
    - User modifies mapping in editor component
    - Changes tracked via internal state
    - Save publishes to MQTT topic
-   - Command-line sensor updates from file
+   - MQTT sensors update from retained MQTT payloads
    - Card refreshes to show new mapping
 
 ### Storage Architecture
 
-- **Runtime Mapping**: `sensor.event2action_runtime_map` (legacy alias: `sensor.rf433_runtime_map`)
+- **Runtime Mapping**: `sensor.event2action_runtime_map`
   - Active mapping used by automations
   - Published via MQTT to `event2action/map`
 
-- **Session Backup**: `sensor.event2action_session_backup` (legacy alias: `sensor.rf433_session_backup`)
+- **Session Backup**: `sensor.event2action_session_backup`
   - Snapshot before learning session starts
   - Published via MQTT to `event2action/session_backup`
 
-- **Step Backup**: `sensor.event2action_step_backup` (legacy alias: `sensor.rf433_step_backup`)
+- **Step Backup**: `sensor.event2action_step_backup`
   - Snapshot before each save operation
   - Published via MQTT to `event2action/step_backup`
 
@@ -317,6 +327,12 @@ entity_domain_list:
   - cover
   - script
   - automation
+  - scene
+  - input_boolean
+  - button
+  - fan
+  - media_player
+  - climate
 auto_unblock: true
 log_level: 2
 custom_common_service_data_keys:
@@ -338,8 +354,15 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level consta
 
 - **Check Learning Mode**: Ensure learning mode toggle is ON
 - **Check Event Store**: Verify `input_text.event2action_last_event_store` is receiving data
-- **Check Event Source**: Ensure your RF433 source is firing fresh `esphome.rf433` events
+- **Check Event Source**: Ensure your event source is firing fresh `esphome.rf433` or `zha_event` events
 - **Check Timestamps**: Old events are ignored; press button again
+
+### Card Shows Package Setup Warning
+
+- **Install Package**: Copy `packages/event2action.yaml` to `/config/packages/event2action.yaml`
+- **Enable Packages**: Ensure `homeassistant: packages: !include_dir_named packages` is configured in `configuration.yaml`
+- **Restart Home Assistant**: A full restart is required after the first package install or package include change
+- **Check MQTT**: Ensure the MQTT integration is installed and available
 
 ### Save Button Stays Disabled
 
@@ -348,7 +371,7 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level consta
 
 ### Mapping Doesn't Work After Save
 
-- **Check Sensor Update**: Wait a few seconds for the command-line sensor to refresh
+- **Check Sensor Update**: Wait a few seconds for the MQTT sensor to refresh
 - **Check Automation**: Verify the Event2Action bus handler automation is active
 - **Check Entity**: Ensure the target entity exists and is accessible
 - **Check Service**: Verify the service is valid for the entity domain
@@ -415,9 +438,9 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level consta
 
 ### Multi-Action Mapping
 
-To trigger multiple actions from one RF code:
+To trigger multiple actions from one event code:
 1. Create a script in Home Assistant with multiple actions
-2. Map the RF code to call that script
+2. Map the event code to call that script
 
 Example script:
 ```yaml
@@ -437,7 +460,7 @@ script:
 
 Then map to: `script.bedroom_night_mode`
 
-### Optional Dimmer Script Mapping
+### Optional Dimmer Script Mapping (not yet available development under way)
 
 If you install a separate dimmer-control project, for example `ha-dimmer-control-by-handheld`, you can map handheld button events to its script. A typical mapping would call `script.turn_on`, target `script.dimmer_control`, and pass script variables as service data:
 
@@ -466,27 +489,32 @@ The dimmer script itself is intentionally external to Event2Action.
 ## File Structure
 
 ```
-www/event2action/
-├── e2a-learning-card.js    # Main Lovelace card component
-├── e2a-editor.js            # Editor component
-├── e2a-config.js            # Configuration constants
-├── e2a-test-map-input.json    # Sample mapping data
-├── styles/
-│   ├── e2a-theme.js         # Theme variables
-│   ├── e2a-layout.js        # Layout styles
-│   ├── e2a-components.js    # Component styles
-│   └── e2a-styles.js        # Common styles
-└── ...
+ha-event2action/
+├── dist/
+│   └── event2action-learning-card.js  # Built Lovelace card loaded by HACS/Home Assistant
+├── packages/
+│   └── event2action.yaml              # Home Assistant package: helpers, MQTT sensors, scripts, automations
+├── src/
+│   ├── e2a-learning-card.js           # Main learning card
+│   ├── e2a-editor.js                  # Mapping editor component
+│   ├── e2a-card-editor.js             # Lovelace card config editor
+│   ├── e2a-config.js                  # Default domains, topics, helpers, editor defaults
+│   ├── mixins/                        # Shared card mixins
+│   ├── styles/                        # Shared Lit CSS modules
+│   └── utils/                         # Utility helpers
+├── hacs.json                          # HACS plugin metadata
+├── QUICKSTART.md
+└── README.md
 ```
 
 ---
 
 ## Dependencies
 
-- **Lit**: Web components library (loaded from CDN)
+- **Lit**: Web components library bundled into the built card
 - **Home Assistant**: Frontend components (`ha-button`, `ha-selector`, etc.)
 - **MQTT Integration**: For publishing mapping updates
-- **Custom Scripts**: Helper script for temporarily blocking mapped event actions
+- **Event2Action Package**: Helper script, automations, MQTT sensors, and helper entities from `packages/event2action.yaml`
 
 ---
 

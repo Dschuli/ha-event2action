@@ -1,13 +1,15 @@
 # Disclaimer
-Install procedure as HACS custom card is just being tested (needs a public repository). So just wait until these tests are finalized - I'll let you know, when this project is ready.
+Install procedure as HACS custom card was just completed. Pls report any issues. I will try to fix asap.
 
 # Event2Action Mapper for Home Assistant
 
-Event2Action is a Home Assistant editor and runtime for mapping normalized button events to Home Assistant actions. It focuses on the Lovelace learning card, MQTT-backed runtime map storage, helper scripts, and feeder automations for `esphome.rf433` and `zha_event`.  feeder automation has to to is sen
+Event2Action is a Home Assistant editor and runtime for mapping normalized button events to Home Assistant actions. It focuses on the Lovelace learning card, MQTT-backed runtime map storage, helper scripts, and feeder automations for `esphome.rf433` and `zha_event`.  
 
-For RF433, this project expects Home Assistant to receive `esphome.rf433` events with protocol/code data. For Zigbee buttons, it consumes native `zha_event` payloads. 
+For RF433, this project expects Home Assistant to receive `esphome.rf433` events with protocol/code data. For Zigbee buttons, it consumes native `zha_event` payloads. These automations will trigger an `event2action_bus` event, that starts the final event processing (define mapping via learning-card; execute mapped HA action). 
 
-Bring your own event source. Just add another feeder automation, triggered by any event (type) of you choice, eg. an ESPHome based IR reiceiver to act on any button press of an (old) IR remote. All this feeder automation has to do is to fwd an event with a distinctive code/protocol payload. `ZHA_event` is a good example of how that works.
+Bring your own event source. Just add another feeder automation, triggered by any event (type) of you choice, eg. an ESPHome based IR reiceiver to act on any button press of an (old) IR remote. All this feeder automation has to do is to fwd an event with a distinctive code/protocol payload. Automation `event2action_zha_feeder` is a good example of how that works, using `ZHA` as protocol, and generating the distinctive code value from the device id + button and action (press, double-press, long-press) info. Then just sending an `event2action_bus` event with this info (+ timestamp and a few other payload fields).
+
+While the main purpose is to reuse existing (old) RF or IR remotes, or. e.g. modern remotes as scene switches, the approach will work with basically any type of event, where the payload can be tranformed into a distinctive code / protocol format.
 
 ## Documentation
 
@@ -37,50 +39,49 @@ Bring your own event source. Just add another feeder automation, triggered by an
 
 ## Installation: to be updated - not final
 
-### 1. Home Assistant Files
+### 1. Home Assistant Package
 
-Copy the Home Assistant files into `/config/`:
+HACS installs the Lovelace card only. It does not copy the Home Assistant package into your config directory.
+
+From the Home Assistant Terminal/SSH add-on, download the package file into `/config/packages/`:
 
 ```bash
-cp homeassistant/e2a_mqtt_sensors.yaml /config/
-cp homeassistant/e2a_scripts.yaml /config/
-cp homeassistant/e2a_automations.yaml /config/
-cp -r homeassistant/www/* /config/www/
+mkdir -p /config/packages
+wget -O /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
 ```
 
-Add these includes to `configuration.yaml`:
+If your terminal does not have `wget`, use `curl` instead:
+
+```bash
+mkdir -p /config/packages
+curl -L -o /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
+```
+
+Make sure package loading is enabled in `configuration.yaml`:
 
 ```yaml
-mqtt: !include e2a_mqtt_sensors.yaml
-script: !include e2a_scripts.yaml
-automation: !include e2a_automations.yaml
+homeassistant:
+  packages: !include_dir_named packages
 ```
 
-If you already split your configuration differently, copy the contents of those files into your existing MQTT, script, and automation configuration instead.
+If you already have a `homeassistant:` section, add only the `packages:` line under it. Restart Home Assistant after adding the package or changing `configuration.yaml`.
 
 ### 2. Automations
 
-The automation file contains three parts:
+The package contains three automations:
 
 - `Event2Action RF433 Feeder`: listens for `esphome.rf433`
 - `Event2Action ZHA Feeder`: listens for `zha_event`
 - `Event2Action Bus Handler`: stores the latest normalized event and runs mapped actions
 
-Restart Home Assistant after adding the files.
+It also creates the required MQTT sensors, helper entities, and helper script used by the card.
 
-### 3. Helper Entities
-
-Create the helper entities described in [HELPERS.md](HELPERS.md):
-
-- `input_text.event2action_last_event_store`
-- `input_boolean.event2action_block_events`
-
-### 4. Dashboard Card
+### 3. Dashboard Card
 
 Add the card resource:
 
 ```yaml
-url: /local/event2action/e2a-learning-card.js
+url: /hacsfiles/ha-event2action/event2action-learning-card.js
 type: module
 ```
 
@@ -156,7 +157,7 @@ Open the dashboard card configuration editor to customize the user-facing option
 
 - Supported entity domains
 - Custom common service data dropdown entries
-- Prefilled service data by entity/service pattern
+- Prefilled service data by entity/service pattern for custom entities, e.g. scripts
 - Auto-unblock behavior
 - Logging level
 
@@ -189,13 +190,13 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level defaul
 
 1. In Developer Tools -> Events, listen for `event2action_bus`.
 2. Fire or trigger an `esphome.rf433` or `zha_event`.
-3. Verify `homeassistant/e2a_automations.yaml` is included and the feeder automations are enabled.
+3. Verify `/config/packages/event2action.yaml` is installed and Home Assistant was restarted.
 4. Check that `input_text.event2action_last_event_store` is updated.
 
 ### Learning Mode Not Working
 
-1. Verify the helper entities exist.
-2. Verify MQTT sensors from `e2a_mqtt_sensors.yaml` are present.
+1. Verify the required helper entities exist.
+2. Verify the MQTT sensors from `packages/event2action.yaml` are present.
 3. Check browser console output for card errors.
 4. Clear the browser cache after frontend file changes.
 
@@ -209,20 +210,23 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level defaul
 ## Project Structure
 
 ```text
-event2action-mapper/
-├── homeassistant/
-│   ├── e2a_automations.yaml     # RF433/ZHA feeders and bus handler
-│   ├── e2a_mqtt_sensors.yaml    # MQTT sensor definitions
-│   ├── e2a_scripts.yaml         # Event blocking helper script
-│   └── www/
-│       ├── event2action/
-│       │   ├── e2a-learning-card.js
-│       │   ├── e2a-editor.js
-│       │   ├── e2a-config.js
-│       │   └── styles/
-│       ├── utils/
-│       └── mixins/
-├── pictures/
+ha-event2action/
+├── dist/
+│   └── event2action-learning-card.js  # Built Lovelace card loaded by HACS/Home Assistant
+├── packages/
+│   └── event2action.yaml              # Home Assistant package: helpers, MQTT sensors, scripts, automations
+├── src/
+│   ├── e2a-learning-card.js           # Main learning card
+│   ├── e2a-editor.js                  # Mapping editor UI
+│   ├── e2a-card-editor.js             # Lovelace card config editor
+│   ├── e2a-config.js                  # Default domains, topics, helpers, editor defaults
+│   ├── mixins/                        # Shared card mixins
+│   ├── styles/                        # Shared Lit CSS modules
+│   └── utils/                         # Utility helpers
+├── pictures/                          # README / documentation images
+├── hacs.json                          # HACS plugin metadata
+├── vite.config.js                     # Build config
+├── QUICKSTART.md
 └── README.md
 ```
 
