@@ -95,7 +95,7 @@ Then add the Lovelace card:
 type: custom:event2action-learning-card
 ```
 
-The card works best in a panel view.
+Use this card in a dedicated panel view. A panel subview is also a good option if you want to keep Event2Action out of the normal dashboard tab list. `mdi:remote` works well as the view icon.
 
 ## Event Source Expectations
 

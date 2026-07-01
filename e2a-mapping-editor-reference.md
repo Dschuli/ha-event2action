@@ -68,6 +68,7 @@ Before using the Event2Action Learning Card, ensure you have completed the initi
 - **Detailed Installation**: See [README.md](README.md) for complete installation instructions
 - **Home Assistant Package**: Install `packages/event2action.yaml` into `/config/packages/event2action.yaml`, enable package loading in `configuration.yaml`, and restart Home Assistant
 - **Setup Diagnostics**: The card shows a setup warning if the required package entities or services are missing
+- **Dashboard Layout**: Use the card in a dedicated panel view, or a panel subview if you want to hide it from the normal dashboard tabs. `mdi:remote` is a good view icon.
 
 ---
 

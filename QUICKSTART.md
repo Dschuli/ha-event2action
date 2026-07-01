@@ -50,6 +50,29 @@ Add this card to a dashboard:
 type: custom:event2action-learning-card
 ```
 
+Use a dedicated panel view for the cleanest layout. The editor is intentionally wide, so a regular card column will feel cramped.
+
+```yaml
+title: Event2Action
+path: event2action
+icon: mdi:remote
+panel: true
+cards:
+  - type: custom:event2action-learning-card
+```
+
+If you do not want Event2Action visible as a normal dashboard tab, make it a panel subview and link to it from another dashboard card:
+
+```yaml
+title: Event2Action
+path: event2action
+icon: mdi:remote
+subview: true
+panel: true
+cards:
+  - type: custom:event2action-learning-card
+```
+
 Optional card configuration is available through the card editor, or as YAML keys beside `type`:
 
 ```yaml
@@ -65,8 +88,6 @@ log_level: 2
 custom_common_service_data_keys: {}
 prefill_service_data: {}
 ```
-
-Use a panel view for the cleanest layout.
 
 ## 3. Verify the Event Flow
 
