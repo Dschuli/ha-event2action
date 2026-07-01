@@ -41,7 +41,7 @@ While the main purpose is to reuse existing (old) RF or IR remotes, or. e.g. mod
   - RF433 source that fires Home Assistant events named `esphome.rf433`
   - Zigbee devices using ZHA, which emit `zha_event`
 
-## Installation: to be updated - not final
+## Installation:
 
 ### 1. Home Assistant Package
 
