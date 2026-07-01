@@ -100,6 +100,8 @@ Before using the Event2Action Learning Card, ensure you have completed the initi
    - **Active**: Enable/disable this mapping
    - **Metadata** (optional): Add Remote, Type, Button, Channel for organization
 
+![Learning mode with a detected event open in the mapping editor](pictures/e2a-editor-learning-mode.png)
+
 4. **Save the Mapping**
    - Click "Save" to store the mapping
    - A step backup is created before saving
@@ -209,6 +211,8 @@ While the editor workd for any sort of event (with the right feeder automation),
   - These parameters are available for quick insertion and can be tailored to your use case.
   - For service data that include entity info, you can use a provided secondary entity picker. You pick will be included at cursor position.
 
+![Common service parameter dropdown for a light action](pictures/e2a-editor-common-parms.png)
+
 - **Preset Service Data for Entity/Service**:
   - If a preset for a specific entity/service combination is defined in the config, the editor will automatically suggest or prefill the corresponding service data. E.g. if you want all light entities, where the name starts with "liv" to turn on with 75% brightness:
   
@@ -216,6 +220,10 @@ While the editor workd for any sort of event (with the right feeder automation),
 
 - **Select Entity Option in Common Params**:
   - When using the common parameter dropdown, you can choose the special option "Select entity" to insert an entity_id at the current cursor position in the service data field. This is especially useful for `script.turn_on` and advanced automations.
+
+![Custom common parameters for a script target](pictures/e2a-editor-custom-common-parms.png)
+
+![Entity picker opened from the custom common parameter dropdown](pictures/e2a-editor-custom-common-parms-entity-selection.png)
 
 ### Editor Behavior
 

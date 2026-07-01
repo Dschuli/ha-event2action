@@ -1868,9 +1868,11 @@ class Event2ActionLearningCardEditor extends s {
     super();
     this.config = {};
     this._customCommonServiceRows = this._customCommonServiceDataKeysToRows(DEFAULT_CONFIG.custom_common_service_data_keys);
-    this._prefillServiceDataText = this._formatJson(DEFAULT_CONFIG.prefill_service_data);
+    this._prefillServiceRows = this._prefillServiceDataToRows(DEFAULT_CONFIG.prefill_service_data);
     this._customCommonServiceDataKeysError = "";
+    this._customCommonServiceFileStatus = "";
     this._prefillServiceDataError = "";
+    this._prefillServiceFileStatus = "";
   }
   setConfig(config) {
     this.config = {
@@ -1878,7 +1880,7 @@ class Event2ActionLearningCardEditor extends s {
       ...config || {}
     };
     this._customCommonServiceRows = this._customCommonServiceDataKeysToRows(this.config.custom_common_service_data_keys);
-    this._prefillServiceDataText = this._formatJson(this.config.prefill_service_data);
+    this._prefillServiceRows = this._prefillServiceDataToRows(this.config.prefill_service_data);
   }
   _formatJson(value) {
     return JSON.stringify(value != null ? value : {}, null, 2);
@@ -1970,14 +1972,26 @@ class Event2ActionLearningCardEditor extends s {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
       return [];
     }
-    return Object.entries(value).flatMap(([pattern, parameters]) => {
+    return Object.entries(value).map(([pattern, parameters]) => {
       const [entityPattern, service] = this._splitEntityServicePattern(pattern);
-      const parameterList = Array.isArray(parameters) ? parameters : [];
-      return parameterList.map((parameter) => ({
+      return {
         entityPattern,
         service,
-        parameterText: this._formatInlineJson(parameter && typeof parameter === "object" ? parameter : {})
-      }));
+        parametersText: this._formatParameterArray(parameters)
+      };
+    });
+  }
+  _prefillServiceDataToRows(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return [];
+    }
+    return Object.entries(value).map(([pattern, prefill]) => {
+      const [entityPattern, service] = this._splitEntityServicePattern(pattern);
+      return {
+        entityPattern,
+        service,
+        prefillText: this._formatPrefillJson(prefill)
+      };
     });
   }
   _splitEntityServicePattern(pattern) {
@@ -1994,18 +2008,19 @@ class Event2ActionLearningCardEditor extends s {
   _formatInlineJson(value) {
     return JSON.stringify(value != null ? value : {});
   }
-  _getAvailableServices(selectedService = "") {
-    var _a2;
-    const services = /* @__PURE__ */ new Set();
-    Object.entries(((_a2 = this.hass) == null ? void 0 : _a2.services) || {}).forEach(([domain, domainServices]) => {
-      Object.keys(domainServices || {}).forEach((service) => {
-        services.add(`${domain}.${service}`);
-      });
-    });
-    if (selectedService) {
-      services.add(selectedService);
+  _formatParameterArray(value) {
+    const parameters = Array.isArray(value) ? value : [];
+    return JSON.stringify(parameters.map((parameter) => parameter && typeof parameter === "object" && !Array.isArray(parameter) ? parameter : {}));
+  }
+  _formatPrefillJson(value) {
+    if (typeof value !== "string") {
+      return this._formatInlineJson(value && typeof value === "object" && !Array.isArray(value) ? value : {});
     }
-    return Array.from(services).sort((a2, b) => a2.localeCompare(b));
+    try {
+      return this._formatInlineJson(JSON.parse(value));
+    } catch {
+      return value;
+    }
   }
   _buildCustomCommonServiceDataKeys(rows) {
     const nextValue = {};
@@ -2013,35 +2028,33 @@ class Event2ActionLearningCardEditor extends s {
     rows.forEach((row, index) => {
       const entityPattern = String(row.entityPattern || "").trim();
       const service = String(row.service || "").trim();
-      const parameterText = String(row.parameterText || "").trim();
-      const isBlank = !entityPattern && !service && !parameterText;
+      const parametersText = String(row.parametersText || "").trim();
+      const isBlank = !entityPattern && !service && !parametersText;
       if (isBlank) {
         return;
       }
-      if (!entityPattern || !service || !parameterText) {
-        errors.push(`Row ${index + 1}: entity pattern, service, and parameter JSON are required.`);
+      if (!entityPattern || !service || !parametersText) {
+        errors.push(`Block ${index + 1}: entity pattern, service, and parameters JSON are required.`);
         return;
       }
-      let parameter;
+      let parameters;
       try {
-        parameter = JSON.parse(parameterText);
+        parameters = JSON.parse(parametersText);
       } catch (error) {
-        errors.push(`Row ${index + 1}: ${error.message}`);
+        errors.push(`Block ${index + 1}: ${error.message}`);
         return;
       }
-      if (!parameter || typeof parameter !== "object" || Array.isArray(parameter)) {
-        errors.push(`Row ${index + 1}: parameter JSON must be an object.`);
+      if (!Array.isArray(parameters)) {
+        errors.push(`Block ${index + 1}: parameters JSON must be an array.`);
         return;
       }
-      if (!String(parameter.label || "").trim() || !String(parameter.value || "").trim()) {
-        errors.push(`Row ${index + 1}: parameter JSON needs label and value.`);
+      const invalidParameterIndex = parameters.findIndex((parameter) => !parameter || typeof parameter !== "object" || Array.isArray(parameter) || !String(parameter.label || "").trim() || !String(parameter.value || "").trim());
+      if (invalidParameterIndex !== -1) {
+        errors.push(`Block ${index + 1}: parameter ${invalidParameterIndex + 1} needs label and value.`);
         return;
       }
       const pattern = `${entityPattern}|${service}`;
-      nextValue[pattern] = [
-        ...nextValue[pattern] || [],
-        parameter
-      ];
+      nextValue[pattern] = parameters;
     });
     return { value: nextValue, error: errors.join(" ") };
   }
@@ -2053,9 +2066,51 @@ class Event2ActionLearningCardEditor extends s {
       this._setConfigValue("custom_common_service_data_keys", result.value);
     }
   }
+  _buildPrefillServiceData(rows) {
+    const nextValue = {};
+    const errors = [];
+    rows.forEach((row, index) => {
+      const entityPattern = String(row.entityPattern || "").trim();
+      const service = String(row.service || "").trim();
+      const prefillText = String(row.prefillText || "").trim();
+      const isBlank = !entityPattern && !service && !prefillText;
+      if (isBlank) {
+        return;
+      }
+      if (!entityPattern || !service || !prefillText) {
+        errors.push(`Block ${index + 1}: entity pattern, service, and prefill JSON are required.`);
+        return;
+      }
+      let prefill;
+      try {
+        prefill = JSON.parse(prefillText);
+      } catch (error) {
+        errors.push(`Block ${index + 1}: ${error.message}`);
+        return;
+      }
+      if (!prefill || typeof prefill !== "object" || Array.isArray(prefill)) {
+        errors.push(`Block ${index + 1}: prefill JSON must be an object.`);
+        return;
+      }
+      nextValue[`${entityPattern}|${service}`] = this._formatInlineJson(prefill);
+    });
+    return { value: nextValue, error: errors.join(" ") };
+  }
+  _setPrefillServiceRows(rows) {
+    this._prefillServiceRows = rows;
+    const result = this._buildPrefillServiceData(rows);
+    this._prefillServiceDataError = result.error;
+    if (!result.error) {
+      this._setConfigValue("prefill_service_data", result.value);
+    }
+  }
   _onCustomCommonServiceRowChanged(index, key, value) {
     const rows = this._customCommonServiceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: value } : row);
     this._setCustomCommonServiceRows(rows);
+  }
+  _onPrefillServiceRowChanged(index, key, value) {
+    const rows = this._prefillServiceRows.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: value } : row);
+    this._setPrefillServiceRows(rows);
   }
   _addCustomCommonServiceRow() {
     this._customCommonServiceRows = [
@@ -2063,7 +2118,17 @@ class Event2ActionLearningCardEditor extends s {
       {
         entityPattern: "",
         service: "",
-        parameterText: '{"label":"","value":"","default":""}'
+        parametersText: '[{"label":"","value":"","default":""}]'
+      }
+    ];
+  }
+  _addPrefillServiceRow() {
+    this._prefillServiceRows = [
+      ...this._prefillServiceRows,
+      {
+        entityPattern: "",
+        service: "",
+        prefillText: "{}"
       }
     ];
   }
@@ -2072,78 +2137,148 @@ class Event2ActionLearningCardEditor extends s {
       this._customCommonServiceRows.filter((_2, rowIndex) => rowIndex !== index)
     );
   }
-  _renderServiceSelector(row, index) {
-    const options = this._getAvailableServices(row.service).map((service) => ({
-      value: service,
-      label: service
-    }));
-    if (customElements.get("ha-selector")) {
-      return x`
-        <ha-selector
-          .hass=${this.hass}
-          .selector=${{
-        select: {
-          options,
-          custom_value: true,
-          mode: "dropdown"
-        }
-      }}
-          .value=${row.service || ""}
-          @value-changed=${(event) => {
-        var _a2;
-        return this._onCustomCommonServiceRowChanged(index, "service", ((_a2 = event.detail) == null ? void 0 : _a2.value) || "");
-      }}
-        ></ha-selector>
-      `;
+  _removePrefillServiceRow(index) {
+    this._setPrefillServiceRows(
+      this._prefillServiceRows.filter((_2, rowIndex) => rowIndex !== index)
+    );
+  }
+  _exportCustomCommonServiceJson() {
+    const result = this._buildCustomCommonServiceDataKeys(this._customCommonServiceRows);
+    this._customCommonServiceDataKeysError = result.error;
+    if (result.error) {
+      this._customCommonServiceFileStatus = "";
+      return;
     }
-    return x`
-      <input
-        type="text"
-        list="event2action-service-list"
-        placeholder="script.turn_on"
-        .value=${row.service || ""}
-        @input=${(event) => this._onCustomCommonServiceRowChanged(index, "service", event.target.value)}
-      />
-    `;
+    const json = JSON.stringify(result.value, null, 2);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+    const filename = `event2action_service_parameters_${timestamp}.json`;
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    this._customCommonServiceFileStatus = `Exported ${filename}.`;
+  }
+  _importCustomCommonServiceJson() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.onchange = async (event) => {
+      var _a2;
+      const file = (_a2 = event.target.files) == null ? void 0 : _a2[0];
+      if (!file)
+        return;
+      try {
+        const text = await file.text();
+        const value = JSON.parse(text);
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          throw new Error("Expected a JSON object keyed by entity/service patterns.");
+        }
+        const rows = this._customCommonServiceDataKeysToRows(value);
+        const result = this._buildCustomCommonServiceDataKeys(rows);
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        this._customCommonServiceFileStatus = `Imported ${file.name}.`;
+        this._setCustomCommonServiceRows(rows);
+      } catch (error) {
+        this._customCommonServiceFileStatus = "";
+        this._customCommonServiceDataKeysError = error.message;
+      }
+    };
+    input.click();
+  }
+  _exportPrefillServiceJson() {
+    const result = this._buildPrefillServiceData(this._prefillServiceRows);
+    this._prefillServiceDataError = result.error;
+    if (result.error) {
+      this._prefillServiceFileStatus = "";
+      return;
+    }
+    const json = JSON.stringify(result.value, null, 2);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+    const filename = `event2action_prefill_service_data_${timestamp}.json`;
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    this._prefillServiceFileStatus = `Exported ${filename}.`;
+  }
+  _importPrefillServiceJson() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.onchange = async (event) => {
+      var _a2;
+      const file = (_a2 = event.target.files) == null ? void 0 : _a2[0];
+      if (!file)
+        return;
+      try {
+        const text = await file.text();
+        const value = JSON.parse(text);
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          throw new Error("Expected a JSON object keyed by entity/service patterns.");
+        }
+        const rows = this._prefillServiceDataToRows(value);
+        const result = this._buildPrefillServiceData(rows);
+        if (result.error) {
+          throw new Error(result.error);
+        }
+        this._prefillServiceFileStatus = `Imported ${file.name}.`;
+        this._setPrefillServiceRows(rows);
+      } catch (error) {
+        this._prefillServiceFileStatus = "";
+        this._prefillServiceDataError = error.message;
+      }
+    };
+    input.click();
   }
   _renderCustomCommonServiceDataTable(rows) {
-    const serviceOptions = this._getAvailableServices();
     return x`
-      ${serviceOptions.length ? x`
-        <datalist id="event2action-service-list">
-          ${serviceOptions.map((service) => x`<option value=${service}></option>`)}
-        </datalist>
-      ` : null}
-
-      <div class="editable-table" role="table" aria-label="Custom common service data keys">
-        <div class="table-row table-head" role="row">
-          <span role="columnheader">Entity pattern</span>
-          <span role="columnheader">Service</span>
-          <span role="columnheader">Parameter JSON</span>
-          <span role="columnheader">Actions</span>
-        </div>
-
+      <div class="combo-list">
         ${rows.length ? rows.map((row, index) => x`
-          <div class="table-row" role="row">
-            <input
-              type="text"
-              placeholder="*dimmer_control"
-              .value=${row.entityPattern || ""}
-              @input=${(event) => this._onCustomCommonServiceRowChanged(index, "entityPattern", event.target.value)}
-              aria-label="Entity pattern"
-            />
-            ${this._renderServiceSelector(row, index)}
-            <textarea
-              rows="2"
-              placeholder='{"label":"steps","value":"steps","default":5}'
-              .value=${row.parameterText || ""}
-              @input=${(event) => this._onCustomCommonServiceRowChanged(index, "parameterText", event.target.value)}
-              aria-label="Parameter JSON"
-            ></textarea>
+          <div class="combo-block">
+            <div class="combo-head">
+              <label class="combo-field">
+                <span>Entity pattern</span>
+                <input
+                  type="text"
+                  placeholder="*dimmer_control"
+                  .value=${row.entityPattern || ""}
+                  @input=${(event) => this._onCustomCommonServiceRowChanged(index, "entityPattern", event.target.value)}
+                  aria-label="Entity pattern"
+                />
+              </label>
+              <label class="combo-field">
+                <span>Service pattern</span>
+                <input
+                  type="text"
+                  placeholder="script.*"
+                  .value=${row.service || ""}
+                  @input=${(event) => this._onCustomCommonServiceRowChanged(index, "service", event.target.value)}
+                  aria-label="Service pattern"
+                />
+              </label>
+            </div>
+            <label class="combo-body combo-field">
+              <span>Parameters JSON</span>
+              <textarea
+                rows="3"
+                placeholder='[{"label":"steps","value":"steps","default":5}]'
+                .value=${row.parametersText || ""}
+                @input=${(event) => this._onCustomCommonServiceRowChanged(index, "parametersText", event.target.value)}
+                aria-label="Parameters JSON array"
+              ></textarea>
+            </label>
             <button
               type="button"
               class="icon-button"
-              title="Remove parameter"
+              title="Remove service parameter block"
               @click=${() => this._removeCustomCommonServiceRow(index)}
             >x</button>
           </div>
@@ -2152,13 +2287,99 @@ class Event2ActionLearningCardEditor extends s {
         `}
       </div>
 
-      <button
-        type="button"
-        class="add-row-button"
-        @click=${() => this._addCustomCommonServiceRow()}
-      >
-        Add parameter
-      </button>
+      <div class="config-actions">
+        <button
+          type="button"
+          @click=${() => this._addCustomCommonServiceRow()}
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          @click=${() => this._exportCustomCommonServiceJson()}
+        >
+          Export JSON
+        </button>
+        <button
+          type="button"
+          @click=${() => this._importCustomCommonServiceJson()}
+        >
+          Import JSON
+        </button>
+      </div>
+      ${this._customCommonServiceFileStatus ? x`<small>${this._customCommonServiceFileStatus}</small>` : null}
+    `;
+  }
+  _renderPrefillServiceDataTable(rows) {
+    return x`
+      <div class="combo-list">
+        ${rows.length ? rows.map((row, index) => x`
+          <div class="combo-block">
+            <div class="combo-head">
+              <label class="combo-field">
+                <span>Entity pattern</span>
+                <input
+                  type="text"
+                  placeholder="*dimmer_control"
+                  .value=${row.entityPattern || ""}
+                  @input=${(event) => this._onPrefillServiceRowChanged(index, "entityPattern", event.target.value)}
+                  aria-label="Prefill entity pattern"
+                />
+              </label>
+              <label class="combo-field">
+                <span>Service pattern</span>
+                <input
+                  type="text"
+                  placeholder="script.*"
+                  .value=${row.service || ""}
+                  @input=${(event) => this._onPrefillServiceRowChanged(index, "service", event.target.value)}
+                  aria-label="Prefill service pattern"
+                />
+              </label>
+            </div>
+            <label class="combo-body combo-field">
+              <span>Prefill JSON</span>
+              <textarea
+                rows="3"
+                placeholder='{"steps":5,"bounce_at_top":false}'
+                .value=${row.prefillText || ""}
+                @input=${(event) => this._onPrefillServiceRowChanged(index, "prefillText", event.target.value)}
+                aria-label="Prefill JSON object"
+              ></textarea>
+            </label>
+            <button
+              type="button"
+              class="icon-button"
+              title="Remove prefill block"
+              @click=${() => this._removePrefillServiceRow(index)}
+            >x</button>
+          </div>
+        `) : x`
+          <div class="empty-table">No prefill data configured.</div>
+        `}
+      </div>
+
+      <div class="config-actions">
+        <button
+          type="button"
+          @click=${() => this._addPrefillServiceRow()}
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          @click=${() => this._exportPrefillServiceJson()}
+        >
+          Export JSON
+        </button>
+        <button
+          type="button"
+          @click=${() => this._importPrefillServiceJson()}
+        >
+          Import JSON
+        </button>
+      </div>
+      ${this._prefillServiceFileStatus ? x`<small>${this._prefillServiceFileStatus}</small>` : null}
     `;
   }
   _onJsonChanged(key, textKey, errorKey, event) {
@@ -2209,25 +2430,16 @@ class Event2ActionLearningCardEditor extends s {
         <div class="field">
           <span>Custom common service data keys</span>
           ${this._renderCustomCommonServiceDataTable(this._customCommonServiceRows)}
-          <small>Each row becomes one common parameter for an entity pattern and service. Entity patterns may use wildcards, for example <code>*dimmer_control</code>.</small>
+          <small>Each block is one entity/service match. Entity and service support wildcards, for example <code>*dimmer_control</code> and <code>script.*</code>. Parameters must be a JSON array.</small>
           ${this._customCommonServiceDataKeysError ? x`<div class="error">${this._customCommonServiceDataKeysError}</div>` : null}
         </div>
 
-        <label class="field">
+        <div class="field">
           <span>Prefill service data</span>
-          <textarea
-            rows="8"
-            .value=${this._prefillServiceDataText}
-            @input=${(event) => this._onJsonChanged(
-      "prefill_service_data",
-      "_prefillServiceDataText",
-      "_prefillServiceDataError",
-      event
-    )}
-          ></textarea>
-          <small>JSON object keyed by entity/service patterns. Values are inserted into the service data field.</small>
+          ${this._renderPrefillServiceDataTable(this._prefillServiceRows)}
+          <small>Each block is one entity/service match. Entity and service support wildcards. Prefill JSON must be an object and is stored in the config as the matching JSON string.</small>
           ${this._prefillServiceDataError ? x`<div class="error">${this._prefillServiceDataError}</div>` : null}
-        </label>
+        </div>
 
         <div class="field switch-row">
           <span>
@@ -2261,9 +2473,11 @@ __publicField(Event2ActionLearningCardEditor, "properties", {
   hass: { attribute: false },
   config: { attribute: false },
   _customCommonServiceRows: { state: true },
-  _prefillServiceDataText: { state: true },
+  _prefillServiceRows: { state: true },
   _customCommonServiceDataKeysError: { state: true },
-  _prefillServiceDataError: { state: true }
+  _customCommonServiceFileStatus: { state: true },
+  _prefillServiceDataError: { state: true },
+  _prefillServiceFileStatus: { state: true }
 });
 __publicField(Event2ActionLearningCardEditor, "styles", i$1`
     .editor {
@@ -2313,37 +2527,75 @@ __publicField(Event2ActionLearningCardEditor, "styles", i$1`
       background: var(--secondary-background-color);
     }
 
-    .editable-table {
+    .combo-list {
       display: grid;
-      gap: 8px;
-      overflow-x: auto;
+      gap: 10px;
     }
 
-    .table-row {
+    .combo-block {
       display: grid;
-      grid-template-columns: minmax(150px, 1fr) minmax(170px, 1fr) minmax(230px, 1.5fr) 44px;
+      grid-template-columns: 1fr 36px;
       gap: 8px;
       align-items: start;
-      min-width: 720px;
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      padding: 8px;
     }
 
-    .table-head {
+    .combo-head,
+    .combo-body {
+      grid-column: 1;
+    }
+
+    .combo-field {
+      display: grid;
+      gap: 4px;
+    }
+
+    .combo-field > span {
       color: var(--secondary-text-color);
       font-size: 12px;
       font-weight: 500;
       text-transform: uppercase;
     }
 
-    .icon-button {
-      width: 36px;
-      min-height: 36px;
-      padding: 0;
-      font-size: 22px;
-      line-height: 1;
+    .combo-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .combo-body textarea {
+      min-height: 76px;
+    }
+
+    .config-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .config-actions button {
+      flex: 1 1 90px;
+      white-space: nowrap;
+    }
+
+    .config-actions button:first-child {
+      flex-grow: 0;
     }
 
     .add-row-button {
       justify-self: start;
+    }
+
+    .icon-button {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      width: 36px;
+      min-height: 36px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
     }
 
     .empty-table {
@@ -2351,6 +2603,12 @@ __publicField(Event2ActionLearningCardEditor, "styles", i$1`
       border: 1px dashed var(--divider-color);
       border-radius: 4px;
       padding: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .combo-head {
+        grid-template-columns: 1fr;
+      }
     }
 
     small {

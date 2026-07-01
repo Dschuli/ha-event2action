@@ -125,6 +125,8 @@ The ZHA feeder listens for `zha_event` and derives a stable code from the device
 4. Save the mapping.
 5. Disable learning mode and test the button.
 
+![Event2Action learning mode with an active mapping editor](pictures/e2a-editor-learning-mode.png)
+
 For detailed editor behavior, backup/restore, import/export, and service data examples, see [e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md).
 
 ### Optional Script Targets
