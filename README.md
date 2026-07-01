@@ -1,5 +1,6 @@
 # Disclaimer
-Install procedure as HACS custom card was just completed. Pls report any issues. I will try to fix asap.
+
+Status: **beta / v0.1.x**. The card and Home Assistant package are usable (and well tested in my HA enviroment) , but the setup flow and configuration UI are still evolving. Please report issues; I will try to fix them as soon as possible.
 
 # Event2Action Mapper for Home Assistant
 
