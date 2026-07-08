@@ -469,9 +469,9 @@ script:
 
 Then map to: `script.bedroom_night_mode`
 
-### Optional Dimmer Script Mapping (not yet available development under way)
+### Optional Dimmer Script Mapping
 
-If you install a separate dimmer-control project, for example `ha-dimmer-control-by-handheld`, you can map handheld button events to its script. A typical mapping would call `script.turn_on`, target `script.dimmer_control`, and pass script variables as service data:
+If you use the dimmer-control support from [`Dschuli/rf433-esphome-sniffer`](https://github.com/Dschuli/rf433-esphome-sniffer), you can map handheld button events to its script. A typical mapping would call `script.turn_on`, target `script.dimmer_control`, and pass script variables as service data:
 
 ```json
 {

@@ -34,7 +34,7 @@ export const ENTITY_DOMAIN_LIST = [
 *   }
 */
 export const CUSTOM_COMMON_SERVICE_DATA_KEYS = {
-	// Optional example for a separate project such as ha-dimmer-control-by-handheld:
+	// Optional example for dimmer-control support from Dschuli/rf433-esphome-sniffer:
 	'*dimmer_control|script.turn_on': [
 		{ label: 'light_entity', value: 'light_entity', default: '' },
 		{ label: 'steps', value: 'steps', default: 5 },
@@ -52,7 +52,7 @@ export const CUSTOM_COMMON_SERVICE_DATA_KEYS = {
 *   }
 */
 export const PREFILL_SERVICE_DATA = {
-	// Optional example for a separate project such as ha-dimmer-control-by-handheld:
+	// Optional example for dimmer-control support from Dschuli/rf433-esphome-sniffer:
 	'*dimmer_control|script.turn_on': '{"light_entity":" ","steps":5,"bounce_at_top":false}'
 };
 

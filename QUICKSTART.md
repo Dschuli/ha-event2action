@@ -126,7 +126,7 @@ If the feeder is working, an `event2action_bus` event appears and `input_text.ev
 5. Save the mapping.
 6. Disable learning mode and trigger the event again.
 
-Optional example: if you later install a separate `ha-dimmer-control-by-handheld` project that provides `script.dimmer_control`, you can map a button to `script.turn_on` with target `script.dimmer_control` and service data like `{"light_entity":"light.living_room","steps":5,"bounce_at_top":false}`.
+Optional example: if you use the dimmer-control support from [`Dschuli/rf433-esphome-sniffer`](https://github.com/Dschuli/rf433-esphome-sniffer), you can map a button to `script.turn_on` with target `script.dimmer_control` and service data like `{"light_entity":"light.living_room","steps":5,"bounce_at_top":false}`.
 
 ## Troubleshooting
 
