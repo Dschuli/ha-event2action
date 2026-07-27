@@ -186,7 +186,7 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 
 ### Optional Fields 
 These fields have no effect on the event processing. You can use them to organize/document your mappings.
-While the editor workd for any sort of event (with the right feeder automation), the name of these 4 fields clearly indicate the main intended use and origin of this custom card/package.
+While the editor works with any kind of event (through the appropriate event adapter), the names of these four fields reflect the primary intended use and origin of this custom card and package.
 
 - **Remote**: Name/identifier of the remote control
   - Auto-suggests from existing values
@@ -199,7 +199,7 @@ While the editor workd for any sort of event (with the right feeder automation),
 - **Button**: Button identifier
   - Auto-suggests from existing values
   - Examples: "A", "1", "power", "up"
-  - For e.g. Zigbee RemoteScene (via zha feederautomation) this field will be prefilled
+  - For example, this field is prefilled for Zigbee scene remotes connected through the included ZHA event adapter
 
 - **Channel**: Channel identifier for multi-channel devices
   - Auto-suggests from existing values
@@ -242,7 +242,7 @@ While the editor workd for any sort of event (with the right feeder automation),
 
 1. **Event Reception**
    - An event source fires a Home Assistant event, such as `esphome.rf433` or `zha_event`
-   - The packaged feeder automation normalizes the event and forwards it to `event2action_bus`
+   - The packaged event adapter normalizes the event and forwards it to `event2action_bus`
    - The packaged bus handler stores the latest normalized event in `input_text.event2action_last_event_store`
 
 2. **Card Detection**

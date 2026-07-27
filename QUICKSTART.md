@@ -6,7 +6,7 @@ Set up the Event2Action editor and runtime in Home Assistant.
 
 - [ ] Home Assistant installed and running
 - [ ] MQTT broker configured
-- [ ] An RF433 source that emits `esphome.rf433`events, or Zigbee devices using ZHA (emitting `zha` event ), or another event source with a corresponding feeder automation
+- [ ] An RF433 source that emits `esphome.rf433` events, Zigbee devices using ZHA (emitting `zha_event`), or another event source with a corresponding event adapter
 
 ## 1. Install the Home Assistant Package
 
@@ -115,9 +115,9 @@ With event data:
 }
 ```
 
-If the feeder is working, an `event2action_bus` event appears and `input_text.event2action_last_event_store` updates.
+If the RF433 event adapter is working, an `event2action_bus` event appears and `input_text.event2action_last_event_store` updates.
 
-## 5. Create Your First Mapping
+## 4. Create Your First Mapping
 
 1. Enable learning mode in the card.
 2. Trigger an RF433 or ZHA button event.
@@ -133,7 +133,7 @@ Optional example: if you use the dimmer-control support from [`Dschuli/rf433-esp
 **No bus event appears**
 
 - Confirm `/config/packages/event2action.yaml` is installed and Home Assistant was restarted.
-- Confirm the feeder automation is enabled.
+- Confirm the relevant event-adapter automation is enabled.
 - Confirm the incoming event is named `esphome.rf433` or `zha_event`.
 
 **Card not showing**
@@ -152,4 +152,3 @@ Optional example: if you use the dimmer-control support from [`Dschuli/rf433-esp
 
 - Full overview: [README.md](README.md)
 - Editor reference: [e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md)
-- Helper setup: [HELPERS.md](HELPERS.md)
