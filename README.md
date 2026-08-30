@@ -270,6 +270,11 @@ ha-event2action/
 ├── QUICKSTART.md
 └── README.md
 ```
+## Acknowledgments
+
+- Home Assistant community for inspiration and support
+- All contributors and users of this project
+- AI-assisted tools were used to support the coding, documentation, and review process. All resulting changes were reviewed and tested by the project maintainer.
 
 ## License
 
