@@ -20,6 +20,7 @@ export class E2AEditor extends LitElement {
     _entityCacheError: { state: true },
     disabled: { type: Boolean },
     existing: { type: Boolean },
+    externalDirty: { type: Boolean },
     _showEntitySelector: { state: true },
     _showCommonParamSelector: { state: true },
   };
@@ -29,6 +30,7 @@ export class E2AEditor extends LitElement {
     this._baseline = null;
     this._working = null;
     this.existing = false;
+    this.externalDirty = false;
     this.entityDomainList = ENTITY_DOMAIN_LIST;
     this.customCommonServiceDataKeys = CUSTOM_COMMON_SERVICE_DATA_KEYS;
     this.prefillServiceData = PREFILL_SERVICE_DATA;
@@ -624,7 +626,7 @@ export class E2AEditor extends LitElement {
               .value=${this._working?.entity ?? ""}
               ?disabled=${this.disabled}
               @value-changed=${e => this._change("entity", e.detail.value)}
-              .label=${"Entity*"}
+              .label=${"Entity"}
             ></ha-selector>
 
             <ha-formfield label="Active">
@@ -813,18 +815,18 @@ export class E2AEditor extends LitElement {
           </ha-selector>
           <ha-selector
             .hass=${this.hass}
-            .label=${"Button"}
-            .value=${this._working?.button ?? ""}
+            .label=${"Command"}
+            .value=${this._working?.command ?? this._working?.button ?? ""}
             .required=${false}
             .selector=${{
         select: {
-          options: this._getUniqueValues('button').map(i => i.value),
+          options: this._getUniqueValues('command').map(i => i.value),
           custom_value: true,
           mode: "dropdown"
         }
       }}
             ?disabled=${this.disabled}
-            @value-changed=${e => this._change("button", e.detail.value)}>
+            @value-changed=${e => this._change("command", e.detail.value)}>
           </ha-selector>
 
           <ha-selector
@@ -846,7 +848,7 @@ export class E2AEditor extends LitElement {
 
         <div class="row-4">
           <div class="buttons">
-            <ha-button raised @click=${this._onSave} ?disabled=${!this._isDirty()}>Save</ha-button>
+            <ha-button raised @click=${this._onSave} ?disabled=${!this._isDirty() && !this.externalDirty}>Save</ha-button>
             <ha-button @click=${this._onCancel}>Cancel</ha-button>
             <ha-button class="danger" @click=${this._onDelete} ?disabled=${!this.existing}>Delete</ha-button>
           </div>

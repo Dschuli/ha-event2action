@@ -39,9 +39,10 @@ Configuration constants and entity references used throughout the system.
 - **Active/Inactive**: Enable or disable individual mappings without deleting them
 
 ### Metadata Organization
+- **Friendly name**: Assign an optional unique human-readable name to the complete mapping
 - **Remote**: Tag codes by remote control name
 - **Type**: Categorize by device type
-- **Button**: Label by button identifier
+- **Command**: Record the command reported by the event source
 - **Channel**: Organize multi-channel devices
 
 ### Backup & Recovery
@@ -97,9 +98,10 @@ Before using the Event2Action Learning Card, ensure you have completed the initi
 3. **Configure the Mapping**
    - **Entity**: Select which Home Assistant entity to control.
    - **Service**: Choose the service to call (e.g., `light.turn_on`).
+   - **Friendly name** (optional): Assign a unique human-readable name. The value is stored now and is intended mainly for future functionality enhancements.
    - **Service Data** (optional): Add JSON parameters like brightness or color
    - **Active**: Enable/disable this mapping
-   - **Metadata** (optional): Add Remote, Type, Button, Channel for organization
+   - **Metadata** (optional): Add Remote, Type, Command, and Channel for organization
 
 ![Learning mode with a detected event open in the mapping editor](pictures/e2a-editor-learning-mode.png)
 
@@ -155,6 +157,10 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
 4. A session backup is created automatically
 5. Current mappings are replaced with imported data
 
+**Migrate from v0.1.3-beta**
+
+Migration is provided as a standalone command-line utility rather than a card action. See [migration/README.md](migration/README.md) for requirements, transformations, safety behavior, and the complete procedure.
+
 ---
 
 ## Editor Reference
@@ -171,6 +177,8 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
   - Supports custom services
   - Examples: `light.turn_on`, `switch.toggle`, `cover.set_cover_position`
   
+### Optional Fields
+
 - **Active**: Enable/disable the mapping (default: ON)
 
 - **Service Data**: JSON object with service parameters for entities requiring/supporting service data
@@ -184,9 +192,14 @@ For bulk editing or advanced modifications, export the map, edit the JSON file d
   - Common parameters by service can be customized or extended in the card configuration editor
   - 
 
-### Optional Fields 
 These fields have no effect on the event processing. You can use them to organize/document your mappings.
-While the editor works with any kind of event (through the appropriate event adapter), the names of these four fields reflect the primary intended use and origin of this custom card and package.
+
+- **Friendly name**: Unique human-readable name for the complete mapping
+  - Compared case-insensitively when checking uniqueness
+  - Stored with the mapping and displayed by the learning card
+  - Intended mainly for future functionality enhancements, such as referring to mappings by name
+
+While the editor works with any kind of event (through the appropriate event adapter), the remaining field names reflect the primary intended use and origin of this custom card and package.
 
 - **Remote**: Name/identifier of the remote control
   - Auto-suggests from existing values
@@ -196,9 +209,10 @@ While the editor works with any kind of event (through the appropriate event ada
   - Auto-suggests from existing values
   - Examples: "IT1500", "ELRO AB440R", "Remote Scene"
 
-- **Button**: Button identifier
+- **Command**: Command reported by the event source
   - Auto-suggests from existing values
-  - Examples: "A", "1", "power", "up"
+  - Uses the legacy `pressed` event value as a fallback
+  - Examples: "short_press", "double_press", "power", "up"
   - For example, this field is prefilled for Zigbee scene remotes connected through the included ZHA event adapter
 
 - **Channel**: Channel identifier for multi-channel devices
@@ -281,8 +295,11 @@ Each mapping entry contains:
 
 ```json
 {
-  "proto": 1,
-  "code": 1234567,
+  "name": "Bedroom main light",
+  "device_ieee": "00:12:4b:00:12:34:56:78",
+  "proto": "zha",
+  "code": "00124b0012345678-1-toggle",
+  "command": "toggle",
   "entity": "light.bedroom",
   "service": "light.turn_on",
   "service_data": {
@@ -291,10 +308,11 @@ Each mapping entry contains:
   "active": true,
   "remote": "bedroom_remote",
   "type": "light",
-  "button": "A",
   "channel": "1"
 }
 ```
+
+`name`, `device_ieee`, `command`, and the organizational metadata fields are optional. The included ZHA adapter builds `code` from the full IEEE address without separators, followed by the endpoint and command. Legacy maps may still contain `button`; the editor reads it as a fallback and saves new or edited mappings using `command`.
 
 ---
 
@@ -376,7 +394,7 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level consta
 ### Save Button Stays Disabled
 
 - **Make a Change**: Save is only enabled after modifying a field
-- **Check Required Fields**: Entity must be selected
+- **Check Required Fields**: Entity and Service must be selected (the editor can still save after an explicit confirmation)
 
 ### Mapping Doesn't Work After Save
 
@@ -402,7 +420,7 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level consta
 ## Best Practices
 
 1. **Regular Backups**: Export your mapping periodically as a safety backup
-2. **Descriptive Metadata**: Use Remote, Type, Button fields for better organization
+2. **Descriptive Metadata**: Use Friendly name, Remote, Type, Command, and Channel for better organization. Friendly name is also reserved for future functionality enhancements.
 3. **Test After Save**: Always test the mapping immediately after saving
 4. **Learning Mode**: Remember to disable learning mode when finished
 5. **Event Blocking**: Use event blocking when testing to prevent unwanted actions
@@ -503,6 +521,9 @@ ha-event2action/
 │   └── event2action-learning-card.js  # Built Lovelace card loaded by HACS/Home Assistant
 ├── packages/
 │   └── event2action.yaml              # Home Assistant package: helpers, MQTT sensors, scripts, automations
+├── migration/
+│   ├── migrate-v0.1.3-to-v0.2.0.js    # Standalone mapping migration utility
+│   └── README.md                       # Migration procedure and safety notes
 ├── src/
 │   ├── e2a-learning-card.js           # Main learning card
 │   ├── e2a-editor.js                  # Mapping editor component

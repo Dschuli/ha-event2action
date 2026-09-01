@@ -2,6 +2,9 @@ input_boolean:
   event2action_block_events:
     name: Event2Action Block Events
     icon: mdi:progress-clock
+  zha_ignored_event_logging:
+    name: ZHA Ignored Event Logging
+    icon: mdi:alert-circle-outline
 
 input_text:
   event2action_last_event_store:
@@ -25,43 +28,70 @@ automation:
       event_data:
         source: rf433
         origin_event_type: esphome.rf433
+        device_ieee: '{{ trigger.event.data.device_ieee | default(''0'') }}'
         proto: '{{ trigger.event.data.protocol | default(trigger.event.data.proto, true)
           | default(''unknown'') }}'
         code: '{{ trigger.event.data.code | default(''0'') }}'
-        pressed: '{{ trigger.event.data.pressed | default('''') }}'
+        command: '{{ trigger.event.data.command | default('''') }}'
         raw: '{{ trigger.event.data }}'
         ts: '{{ now().isoformat() }}'
     mode: single
   - id: event2action_zha_feeder
     alias: Event2Action ZHA Feeder
-    description: Normalizes zha_event payloads and forwards them to the generic event2action
+    description: >-
+      Normalizes zha_event payloads and forwards them to the generic event2action
       bus.
     triggers:
-    - event_type: zha_event
-      trigger: event
-    variables:
-      zha_command_code: "{{\n  (\n    trigger.event.data.device_ieee.replace(':','')[-6:]
-        | int(base=16)\n  ) * 1000 +\n  (trigger.event.data.endpoint_id | int) * 100
-        +\n  (\n    1 if trigger.event.data.command == 'remote_button_short_press' else\n
-        \   2 if trigger.event.data.command == 'remote_button_double_press' else\n    3
-        if trigger.event.data.command == 'remote_button_long_press' else\n    0\n  )\n}}"
-      zha_pressed: '{{ trigger.event.data.endpoint_id }}- {%- if trigger.event.data.command
-        == ''remote_button_short_press'' -%} press {%- elif trigger.event.data.command
-        == ''remote_button_double_press'' -%} dblPress {%- elif trigger.event.data.command
-        == ''remote_button_long_press'' -%} longPress {%- else -%} unknown {%- endif
-        %}'
+      - event_type: zha_event
+        trigger: event
     actions:
-    - event: event2action_bus
-      event_data:
-        source: zha
-        origin_event_type: zha_event
-        proto: zha
-        code: '{{ zha_command_code }}'
-        pressed: '{{ zha_pressed | trim }}'
-        raw: '{{ trigger.event.data }}'
-        ts: '{{ now().isoformat() }}'
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: >
+                  {{
+                    trigger.event.data.get('device_ieee') is none
+                    or trigger.event.data.get('endpoint_id') is none
+                    or trigger.event.data.get('command') is none
+                  }}
+            sequence:
+              - condition: state
+                entity_id: input_boolean.zha_ignored_event_logging
+                state: "on"
+              - action: system_log.write
+                data:
+                  level: warning
+                  logger: event2action_zha_feeder
+                  message: >
+                    EVENT2ACTION ZHA IGNORED EVENT:
+                    {{ trigger.event.data | tojson }}
+        default:
+          - variables:
+              zha_command_code: |-
+                {{
+                  (trigger.event.data.device_ieee | string
+                    | replace(':', '') | replace('-', '') | lower)
+                  ~ '-' ~ trigger.event.data.endpoint_id
+                  ~ '-' ~ trigger.event.data.command | replace('remote_button_', '')
+                }}
+
+              zha_command: >-
+                {{ trigger.event.data.command | replace('remote_button_', '') }}
+
+          - event: event2action_bus
+            event_data:
+              source: zha
+              origin_event_type: zha_event
+              proto: zha
+              device_ieee: '{{ trigger.event.data.device_ieee | default(''0'') }}'
+              code: "{{ zha_command_code }}"
+              command: "{{ zha_command | trim }}"
+              raw: "{{ trigger.event.data }}"
+              ts: "{{ now().isoformat() }}"
     mode: queued
     max: 10
+    trace:
+      stored_traces: 50
   - id: event2action_bus_handler
     alias: Event2Action Bus Handler
     description: Stores normalized event2action_bus events and executes the mapped Home
@@ -74,9 +104,10 @@ automation:
         runtime_map_entity: sensor.event2action_runtime_map
         blocking_helper_entity: input_boolean.event2action_block_events
         event_type: '{{ trigger.event.event_type }}'
+        device_ieee: '{{ trigger.event.data.device_ieee | default(''0'') }}'
         proto: '{{ trigger.event.data.proto | default(''unknown'') }}'
         code: '{{ trigger.event.data.code | default(''0'') }}'
-        pressed: '{{ trigger.event.data.pressed | default('''') }}'
+        command: '{{ trigger.event.data.command | default('''') }}'
         event2action_map: '{{ state_attr(''sensor.event2action_runtime_map'', ''map'')
           | default([], true) }}'
         event2action_sensor_missing: '{{ states(''sensor.event2action_runtime_map'')
@@ -84,8 +115,7 @@ automation:
     - target:
         entity_id: input_text.event2action_last_event_store
       data:
-        value: "{{ {\n  'proto': proto | string,\n  'code': code | string,\n  'pressed':
-          pressed | string,\n  'ts': now().isoformat()\n} | tojson }}"
+        value: "{{ {\n  'device_ieee': device_ieee | string,\n  'proto': proto | string,\n  'code': code | string,\n  'command': command | string,\n  'ts': now().isoformat()\n} | tojson }}"
       continue_on_error: true
       action: input_text.set_value
     - choose:

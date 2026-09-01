@@ -111,7 +111,7 @@ With event data:
 {
   "protocol": 1,
   "code": "111111111",
-  "pressed": "test"
+  "command": "test"
 }
 ```
 
@@ -121,12 +121,17 @@ If the RF433 event adapter is working, an `event2action_bus` event appears and `
 
 1. Enable learning mode in the card.
 2. Trigger an RF433 or ZHA button event.
-3. Select the target entity.
-4. Select the service, such as `light.toggle` or `switch.turn_on`.
-5. Save the mapping.
-6. Disable learning mode and trigger the event again.
+3. Optionally enter a unique Friendly name. It is stored with the mapping and is intended mainly for future functionality enhancements.
+4. Select the target entity.
+5. Select the service, such as `light.toggle` or `switch.turn_on`.
+6. Save the mapping.
+7. Disable learning mode and trigger the event again.
 
 Optional example: if you use the dimmer-control support from [`Dschuli/rf433-esphome-sniffer`](https://github.com/Dschuli/rf433-esphome-sniffer), you can map a button to `script.turn_on` with target `script.dimmer_control` and service data like `{"light_entity":"light.living_room","steps":5,"bounce_at_top":false}`.
+
+## Migrating a v0.1.3-beta Mapping
+
+Export the old map, then use the standalone migration utility described in [migration/README.md](migration/README.md). The utility creates a separate v0.2.0 JSON file; review it before importing it through the card.
 
 ## Troubleshooting
 

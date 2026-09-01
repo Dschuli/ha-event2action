@@ -1057,6 +1057,7 @@ class E2AEditor extends s {
     this._baseline = null;
     this._working = null;
     this.existing = false;
+    this.externalDirty = false;
     this.entityDomainList = ENTITY_DOMAIN_LIST;
     this.customCommonServiceDataKeys = CUSTOM_COMMON_SERVICE_DATA_KEYS;
     this.prefillServiceData = PREFILL_SERVICE_DATA;
@@ -1543,7 +1544,7 @@ class E2AEditor extends s {
     };
   }
   render() {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
     if (!this.hass || !this.draft) {
       return x`<div>Loading... (hass: ${!!this.hass}, draft: ${!!this.draft})</div>`;
     }
@@ -1567,7 +1568,7 @@ class E2AEditor extends s {
               .value=${(_b = (_a2 = this._working) == null ? void 0 : _a2.entity) != null ? _b : ""}
               ?disabled=${this.disabled}
               @value-changed=${(e2) => this._change("entity", e2.detail.value)}
-              .label=${"Entity*"}
+              .label=${"Entity"}
             ></ha-selector>
 
             <ha-formfield label="Active">
@@ -1779,24 +1780,24 @@ class E2AEditor extends s {
           </ha-selector>
           <ha-selector
             .hass=${this.hass}
-            .label=${"Button"}
-            .value=${(_l = (_k = this._working) == null ? void 0 : _k.button) != null ? _l : ""}
+            .label=${"Command"}
+            .value=${(_n = (_m = (_k = this._working) == null ? void 0 : _k.command) != null ? _m : (_l = this._working) == null ? void 0 : _l.button) != null ? _n : ""}
             .required=${false}
             .selector=${{
       select: {
-        options: this._getUniqueValues("button").map((i2) => i2.value),
+        options: this._getUniqueValues("command").map((i2) => i2.value),
         custom_value: true,
         mode: "dropdown"
       }
     }}
             ?disabled=${this.disabled}
-            @value-changed=${(e2) => this._change("button", e2.detail.value)}>
+            @value-changed=${(e2) => this._change("command", e2.detail.value)}>
           </ha-selector>
 
           <ha-selector
             .hass=${this.hass}
             .label=${"Channel"}
-            .value=${(_n = (_m = this._working) == null ? void 0 : _m.channel) != null ? _n : ""}
+            .value=${(_p = (_o = this._working) == null ? void 0 : _o.channel) != null ? _p : ""}
             .required=${false}
             .selector=${{
       select: {
@@ -1812,7 +1813,7 @@ class E2AEditor extends s {
 
         <div class="row-4">
           <div class="buttons">
-            <ha-button raised @click=${this._onSave} ?disabled=${!this._isDirty()}>Save</ha-button>
+            <ha-button raised @click=${this._onSave} ?disabled=${!this._isDirty() && !this.externalDirty}>Save</ha-button>
             <ha-button @click=${this._onCancel}>Cancel</ha-button>
             <ha-button class="danger" @click=${this._onDelete} ?disabled=${!this.existing}>Delete</ha-button>
           </div>
@@ -1834,6 +1835,7 @@ __publicField(E2AEditor, "properties", {
   _entityCacheError: { state: true },
   disabled: { type: Boolean },
   existing: { type: Boolean },
+  externalDirty: { type: Boolean },
   _showEntitySelector: { state: true },
   _showCommonParamSelector: { state: true }
 });
@@ -2871,9 +2873,10 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       } else {
         try {
           const data = JSON.parse(storeState);
+          this._lastDeviceIeee = data.device_ieee || "";
           this._lastProto = data.proto;
           this._lastCode = data.code;
-          this._lastPressed = data.pressed || "";
+          this._lastPressed = data.command || data.pressed || "";
           this._lastTs = new Date(data.ts).getTime();
           this._hasValidLastData = this._lastProto != null && this._lastCode != null && this._lastTs != null;
           logger.debug("E2ALearningCard: last RF event =", this._lastProto, this._lastCode, this._lastPressed, this._lastTs);
@@ -2886,6 +2889,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   }
   _resetLastEventData() {
     this._hasValidLastData = false;
+    this._lastDeviceIeee = null;
     this._lastProto = null;
     this._lastCode = null;
     this._lastPressed = null;
@@ -3139,6 +3143,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       const cleaned = { ...entry };
       if (cleaned.temp)
         delete cleaned.temp;
+      delete cleaned.button;
       return cleaned;
     });
     for (let i2 = 0; i2 < oldMap.length; i2++) {
@@ -3201,7 +3206,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       this._setSessionBackupHint();
     }
   }
-  _start_EditMode(proto, code, pressed) {
+  _start_EditMode(proto, code, command) {
     var _a2;
     logger.info("E2ALearningCard: starting editor for ", proto, code);
     this._lockedPcc = { proto, code };
@@ -3214,6 +3219,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     const existing = this.findMapping(map, proto, code);
     const baseEntry = {
       ...this._lockedPcc,
+      device_ieee: this._lastDeviceIeee || "",
       active: true,
       service: "",
       entity: "",
@@ -3221,20 +3227,21 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       remote: "",
       type: "",
       channel: "",
-      button: pressed || "",
-      temp: { pressed }
+      command: command || ""
     };
     let originalEntry = structuredClone(existing != null ? existing : baseEntry);
-    if ((!originalEntry.button || originalEntry.button === "") && pressed) {
-      originalEntry.button = pressed;
-      originalEntry.temp = { pressed };
-    }
+    originalEntry.device_ieee = this._lastDeviceIeee || originalEntry.device_ieee || "";
+    originalEntry.command = command || originalEntry.command || originalEntry.button || "";
+    delete originalEntry.button;
     this._original = originalEntry;
     this._draft = structuredClone(this._original);
   }
   _onDraftChanged(e2) {
     const { field, value } = e2.detail;
     this._draft = { ...this._draft, [field]: value };
+  }
+  _onMappingNameChanged(e2) {
+    this._draft = { ...this._draft, name: e2.target.value };
   }
   async blockEvents(seconds) {
     logger.debug("E2ALearningCard: blockEvents called with", seconds);
@@ -3387,6 +3394,21 @@ This will replace the current mapping.`,
     this._lockedPcc = null;
   }
   async _onEditorSave(e2) {
+    const name = (this._draft.name || "").trim();
+    const { map } = this._get_mapping_data(this._getRuntimeMappingEntity());
+    const duplicateName = name && map.some(
+      (entry) => (entry.proto !== this._lockedPcc.proto || entry.code !== this._lockedPcc.code) && (entry.name || "").trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+    );
+    if (duplicateName) {
+      await confirm(`Mapping name "${name}" is already in use. Please choose a unique name.`, { yes: "Ok", no: "" });
+      return;
+    }
+    const normalizedDraft = { ...this._draft };
+    if (name)
+      normalizedDraft.name = name;
+    else
+      delete normalizedDraft.name;
+    this._draft = normalizedDraft;
     if (!this._draft.entity || !this._draft.service) {
       const ok = await confirm("Entity and Service fields are required.\nDo you want to save this record anyway?", { yes: "Yes", no: "Cancel" });
       if (!ok)
@@ -3530,7 +3552,7 @@ This will replace the current mapping.`,
     `;
   }
   render() {
-    var _a2, _b, _c;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
     if (!this.hass) {
       return x`
         <ha-card header="Event2Action Learning">
@@ -3638,6 +3660,14 @@ This will replace the current mapping.`,
             Code ${this._lockedPcc.code}
           </p>
 
+          <div class="row-4">
+            <ha-input
+              label="Friendly name (Optional)"
+              .value=${(_d = (_c = this._draft) == null ? void 0 : _c.name) != null ? _d : ""}
+              @input=${this._onMappingNameChanged}>
+            </ha-input>
+          </div>
+
           <e2a-editor
             .hass=${this.hass}
             .draft=${this._draft}
@@ -3646,6 +3676,7 @@ This will replace the current mapping.`,
             .customCommonServiceDataKeys=${this._customCommonServiceDataKeys}
             .prefillServiceData=${this._prefillServiceData}
             .existing=${!!match}
+            .externalDirty=${((_f = (_e = this._draft) == null ? void 0 : _e.name) != null ? _f : "") !== ((_h = (_g = this._original) == null ? void 0 : _g.name) != null ? _h : "")}
             .disabled=${false}
             @draft-changed=${this._onDraftChanged}
             @save=${this._onEditorSave}
@@ -3659,6 +3690,7 @@ This will replace the current mapping.`,
           <ul>
             <li>Proto: ${this._lastProto}</li>
             <li>Code: ${this._lastCode}</li>
+            ${this._lastPressed ? x`<li>Command: ${this._lastPressed}</li>` : null}
           </ul>
         ` : null}
 
@@ -3666,8 +3698,10 @@ This will replace the current mapping.`,
         ${!isEditing ? x`
           <b>Last event</b>
           <ul class="no_vert_margin" >
+            ${(nonEditMatch == null ? void 0 : nonEditMatch.name) ? x`<li>Mapping name: ${nonEditMatch.name}</li>` : null}
             <li>Proto: ${displayProto}</li>
             <li>Code: ${displayCode}</li>
+            ${this._lastPressed ? x`<li>Command: ${this._lastPressed}</li>` : null}
           </ul>
 
           ${nonEditMatch ? x`
@@ -3676,12 +3710,12 @@ This will replace the current mapping.`,
                   <li>Entity: ${nonEditMatch.entity}</li>
                   <li>Service: ${nonEditMatch.service}</li>
                   <li class="item ${this._hasValue(nonEditMatch.service_data) ? "" : "hidden"}">Service Data:
-                    <pre>${JSON.stringify((_c = nonEditMatch.service_data) != null ? _c : {}, null, 2)}</pre>
+                    <pre>${JSON.stringify((_i = nonEditMatch.service_data) != null ? _i : {}, null, 2)}</pre>
                   </li>
                   <li>Active: ${nonEditMatch.active ? "yes" : "no"}</li>
                   <li>Remote: ${nonEditMatch.remote}</li>
                   <li>Type: ${nonEditMatch.type}</li>
-                  <li>Button: ${nonEditMatch.button}</li>
+                  <li>Command: ${(_k = (_j = nonEditMatch.command) != null ? _j : nonEditMatch.button) != null ? _k : ""}</li>
                   <li>Channel: ${nonEditMatch.channel}</li>
                 </ul>
               ` : x`

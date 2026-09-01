@@ -58,6 +58,7 @@ An **event adapter** is a simple Home Assistant automation that converts a sourc
 - **ZHA event adapter**: normalizes `zha_event` button payloads into the same bus
 - **Learning mode**: interactively learn and map incoming event codes
 - **Visual editor**: create and edit mappings without hand-editing JSON
+- **Friendly names**: optionally assign a unique human-readable name to a mapping for organization and future functionality
 - **Backup and undo**: session and step-level backups
 - **Import/export**: save and restore mappings as JSON
 - **Event blocking**: temporarily suppress action execution while learning
@@ -67,7 +68,7 @@ An **event adapter** is a simple Home Assistant automation that converts a sourc
 
 Event adapters translate source-specific payloads into a stable protocol/code pair and fire the shared `event2action_bus` event. The learning card captures that normalized event and stores its action mapping. The central bus handler then executes the mapped Home Assistant action whenever the event occurs again.
 
-For example, `event2action_zha_feeder` uses `ZHA` as the protocol and derives a distinctive code from the device, button, and gesture (such as press, double press, or long press). Use it as a template for IR receivers, MQTT devices, NFC scans, doorbells, BLE buttons, or other event sources.
+For example, `event2action_zha_feeder` uses `ZHA` as the protocol and derives a distinctive code from the device's full IEEE address, endpoint, and command (such as press, double press, or long press). Use it as a template for IR receivers, MQTT devices, NFC scans, doorbells, BLE buttons, or other event sources.
 
 ## Requirements
 
@@ -144,23 +145,28 @@ The RF433 event adapter expects events named `esphome.rf433` with data similar t
 {
   "protocol": 1,
   "code": "1234567",
-  "pressed": "A"
+  "command": "A"
 }
 ```
 
-`protocol` may also be provided as `proto`. The adapter normalizes these fields into `proto`, `code`, `pressed`, `source`, and `origin_event_type`.
+`protocol` may also be provided as `proto`. The adapter normalizes these fields into `device_ieee`, `proto`, `code`, `command`, `source`, and `origin_event_type`.
 
 ### ZHA
 
-The ZHA event adapter listens for `zha_event` and derives a stable code from the device IEEE address, endpoint, and command. It supports short, double, and long press style commands.
+The ZHA event adapter listens for `zha_event` and derives a stable code from the full device IEEE address (with `:` or `-` separators removed), endpoint, and command. It supports short, double, and long press style commands. Because this format replaces the earlier shortened IEEE suffix, existing ZHA mappings created with the old format must be migrated or learned again.
+
+### Migrating from v0.1.3-beta
+
+Use the standalone migration tool for existing v0.1.3-beta maps. See [migration/README.md](migration/README.md) for the procedure. The migration utility is separate from the card UI and produces a new JSON file for review and import.
 
 ## Usage
 
 1. Enable learning mode in the Event2Action card.
 2. Press a button or fire a test event.
-3. Pick the target entity and service.
-4. Save the mapping.
-5. Disable learning mode and test the button.
+3. Optionally enter a unique Friendly name, intended to support future functionality enhancements.
+4. Pick the target entity and service.
+5. Save the mapping.
+6. Disable learning mode and test the button.
 
 For detailed editor behavior, backup/restore, import/export, and service data examples, see [e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md).
 
@@ -186,7 +192,7 @@ Open Home Assistant Developer Tools -> Events and fire an `esphome.rf433` event:
 {
   "protocol": 1,
   "code": "111111111",
-  "pressed": "test"
+  "command": "test"
 }
 ```
 
@@ -256,6 +262,9 @@ ha-event2action/
 │   └── event2action-learning-card.js  # Built Lovelace card loaded by HACS/Home Assistant
 ├── packages/
 │   └── event2action.yaml              # Home Assistant package: helpers, MQTT sensors, scripts, automations
+├── migration/
+│   ├── migrate-v0.1.3-to-v0.2.0.js    # Standalone mapping migration utility
+│   └── README.md                       # Migration procedure and safety notes
 ├── src/
 │   ├── e2a-learning-card.js           # Main learning card
 │   ├── e2a-editor.js                  # Mapping editor UI

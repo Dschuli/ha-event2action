@@ -315,9 +315,10 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       } else {
         try {
           const data = JSON.parse(storeState);
+          this._lastDeviceIeee = data.device_ieee || "";
           this._lastProto = data.proto;
           this._lastCode = data.code;
-          this._lastPressed = data.pressed || "";
+          this._lastPressed = data.command || data.pressed || "";
           this._lastTs = new Date(data.ts).getTime();
           this._hasValidLastData = this._lastProto != null && this._lastCode != null && this._lastTs != null;
           logger.debug("E2ALearningCard: last RF event =", this._lastProto, this._lastCode, this._lastPressed, this._lastTs);
@@ -331,6 +332,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
 
   _resetLastEventData() {
     this._hasValidLastData = false;
+    this._lastDeviceIeee = null;
     this._lastProto = null;
     this._lastCode = null;
     this._lastPressed = null;
@@ -613,6 +615,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     const cleanedNewMap = newMap.map(entry => {
       const cleaned = { ...entry };
       if (cleaned.temp) delete cleaned.temp;
+      delete cleaned.button;
       return cleaned;
     });
 
@@ -691,7 +694,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   // Enter edit mode for current last event
-  _start_EditMode(proto, code, pressed) {
+  _start_EditMode(proto, code, command) {
     logger.info("E2ALearningCard: starting editor for ", proto, code);
     this._lockedPcc = { proto: proto, code: code };
     this._editorStartedAt = Date.now();
@@ -701,9 +704,10 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     const map = Array.isArray(stateObj.attributes?.map) ? stateObj.attributes.map : [];
     const existing = this.findMapping(map, proto, code);
 
-    // Create base object with prefilled button from pressed value (for new entries)
+    // Create a base object with event metadata for new entries.
     const baseEntry = {
       ...this._lockedPcc,
+      device_ieee: this._lastDeviceIeee || "",
       active: true,
       service: "",
       entity: "",
@@ -711,16 +715,14 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       remote: "",
       type: "",
       channel: "",
-      button: pressed || "",  // Prefill button from pressed value
-      temp: { pressed }
+      command: command || ""
     };
 
-    // Use existing entry, but prefill button from pressed if it's empty or missing
+    // Migrate the legacy button field while editing, but only save command.
     let originalEntry = structuredClone(existing ?? baseEntry);
-    if ((!originalEntry.button || originalEntry.button === "") && pressed) {
-      originalEntry.button = pressed;
-      originalEntry.temp = { pressed };
-    }
+    originalEntry.device_ieee = this._lastDeviceIeee || originalEntry.device_ieee || "";
+    originalEntry.command = command || originalEntry.command || originalEntry.button || "";
+    delete originalEntry.button;
 
     this._original = originalEntry;
     this._draft = structuredClone(this._original);
@@ -729,6 +731,10 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
   _onDraftChanged(e) {
     const { field, value } = e.detail;
     this._draft = { ...this._draft, [field]: value };
+  }
+
+  _onMappingNameChanged(e) {
+    this._draft = { ...this._draft, name: e.target.value };
   }
 
   /* =========================================================
@@ -896,6 +902,22 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
   }
 
   async _onEditorSave(e) {
+    const name = (this._draft.name || "").trim();
+    const { map } = this._get_mapping_data(this._getRuntimeMappingEntity());
+    const duplicateName = name && map.some(entry =>
+      (entry.proto !== this._lockedPcc.proto || entry.code !== this._lockedPcc.code) &&
+      (entry.name || "").trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+    );
+    if (duplicateName) {
+      await confirm(`Mapping name "${name}" is already in use. Please choose a unique name.`, { yes: "Ok", no: "" });
+      return;
+    }
+
+    const normalizedDraft = { ...this._draft };
+    if (name) normalizedDraft.name = name;
+    else delete normalizedDraft.name;
+    this._draft = normalizedDraft;
+
     if (!this._draft.entity || !this._draft.service) {
       const ok = await confirm("Entity and Service fields are required.\nDo you want to save this record anyway?", { yes: "Yes", no: "Cancel" });
       if (!ok) return;
@@ -1169,6 +1191,14 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
             Code ${this._lockedPcc.code}
           </p>
 
+          <div class="row-4">
+            <ha-input
+              label="Friendly name (Optional)"
+              .value=${this._draft?.name ?? ""}
+              @input=${this._onMappingNameChanged}>
+            </ha-input>
+          </div>
+
           <e2a-editor
             .hass=${this.hass}
             .draft=${this._draft}
@@ -1177,6 +1207,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
             .customCommonServiceDataKeys=${this._customCommonServiceDataKeys}
             .prefillServiceData=${this._prefillServiceData}
             .existing=${!!match}
+            .externalDirty=${(this._draft?.name ?? "") !== (this._original?.name ?? "")}
             .disabled=${false}
             @draft-changed=${this._onDraftChanged}
             @save=${this._onEditorSave}
@@ -1190,6 +1221,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
           <ul>
             <li>Proto: ${this._lastProto}</li>
             <li>Code: ${this._lastCode}</li>
+            ${this._lastPressed ? html`<li>Command: ${this._lastPressed}</li>` : null}
           </ul>
         ` : null}
 
@@ -1197,8 +1229,10 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
         ${!isEditing ? html`
           <b>Last event</b>
           <ul class="no_vert_margin" >
+            ${nonEditMatch?.name ? html`<li>Mapping name: ${nonEditMatch.name}</li>` : null}
             <li>Proto: ${displayProto}</li>
             <li>Code: ${displayCode}</li>
+            ${this._lastPressed ? html`<li>Command: ${this._lastPressed}</li>` : null}
           </ul>
 
           ${nonEditMatch
@@ -1213,7 +1247,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
                   <li>Active: ${nonEditMatch.active ? "yes" : "no"}</li>
                   <li>Remote: ${nonEditMatch.remote}</li>
                   <li>Type: ${nonEditMatch.type}</li>
-                  <li>Button: ${nonEditMatch.button}</li>
+                  <li>Command: ${nonEditMatch.command ?? nonEditMatch.button ?? ""}</li>
                   <li>Channel: ${nonEditMatch.channel}</li>
                 </ul>
               `
