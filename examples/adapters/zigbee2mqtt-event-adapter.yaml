@@ -1,4 +1,5 @@
 # Paste into ONE new Home Assistant automation's YAML editor.
+# EXAMPLE NEEDS HARDWARE TESTING: the author has no Z2M remote to verify it.
 # Change only triggers[0].topic: a device JSON topic or a remote-only wildcard.
 # One automation can cover multiple remotes, each publishing to its own topic:
 #   zigbee2mqtt/remotes/living_room

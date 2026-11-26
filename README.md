@@ -44,13 +44,16 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 |---|---|
 | RF433 remotes and wall switches via ESPHome | ✅ Built-in adapter |
 | Zigbee buttons and scene switches via ZHA | ✅ Built-in adapter |
-| Zigbee buttons and scene switches via Zigbee2MQTT | [Example YAML code provided](examples/adapters/zigbee2mqtt-event-adapter.yaml) |
+| Zigbee buttons and scene switches via Zigbee2MQTT | [Example YAML code provided](examples/adapters/zigbee2mqtt-event-adapter.yaml) \* |
+| Matter buttons and remotes exposed as HA event entities | [Example YAML code provided](examples/adapters/matter-event-adapter.yaml) \* |
 | Other MQTT messages | Custom adapter required |
 | ESPHome custom events | Custom adapter required |
 | IR receivers | Custom adapter required (depends on receiver/event format) |
 | Other Home Assistant events | Custom adapter required |
 
 **Built-in adapter** means no additional automation is needed. **Example YAML code provided** means copy the supplied automation and set its device-specific values. **Custom adapter required** means adapt the [generic template](examples/adapters/custom-event-adapter.yaml) or write an automation for your source's payload. These are setup requirements, not different processing modes: every adapter sends the same normalized `event2action_bus` event. Examples are not automatically installed or hardware-verified for every device.
+
+\* **Hardware testing needed:** The author does not have Zigbee2MQTT remotes or Matter buttons/remotes to test these examples. They are based on the documented interfaces and checked for YAML/template behavior, but are not verified on physical devices. Test reports and corrections are welcome via [GitHub issues](https://github.com/Dschuli/ha-event2action/issues/new).
 
 A **custom event adapter** can be a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The integration includes adapters for `esphome.rf433` and `zha_event`. Custom adapters can still fire `event2action_bus` from UI/YAML automations without Python code.
 
@@ -63,6 +66,8 @@ A disabled [working ZHA YAML example](examples/adapters/zha-event-adapter.yaml) 
 The disabled [ESPHome RF433 YAML example](examples/adapters/esphome-rf433-event-adapter.yaml) shows `esphome.rf433` normalization, protocol fallback, and field defaults. Keep it disabled alongside the built-in RF433 adapter.
 
 For Zigbee2MQTT, use the [copy-and-edit YAML automation](examples/adapters/zigbee2mqtt-event-adapter.yaml): enable `mqtt.include_device_information: true` in Zigbee2MQTT, enter only the remote's exact MQTT topic in the automation, then enable it. The adapter reads the IEEE address from `device.ieeeAddr` automatically. It handles all nonempty JSON `action` values without a per-button list. MQTT is used only for incoming events; map storage stays in HA. See the [adapter guide](examples/adapters/README.md#zigbee2mqtt-remote-example) for prerequisites and retained-message handling.
+
+For Matter, the [event-entity YAML example](examples/adapters/matter-event-adapter.yaml) forwards button event types from selected `event.*` entities into Event2Action. It needs your entity IDs and an already working HA Matter setup; Thread devices also need a Thread border router. Both Matter and Z2M examples need hardware testing as noted above.
 
 Need an adapter for another event source? The author offers help creating additional adapters. [Open a GitHub issue](https://github.com/Dschuli/ha-event2action/issues/new) with your event source/device, incoming event type, and an example payload with sensitive information removed.
 

@@ -1,0 +1,74 @@
+# Paste into ONE new Home Assistant automation's YAML editor.
+# EXAMPLE NEEDS HARDWARE TESTING: the author has no Matter remote to verify it.
+# Replace the event entity IDs below with your Matter remote's event.* entities.
+# Requires the remote to be working in HA's Matter integration already.
+# Matter-over-Thread remotes also require a functioning Thread border router.
+# Not loaded automatically by Event2Action; no Python/MQTT adapter is required.
+#
+# Uses a state trigger to accept all event types without a per-model press list.
+# Event entity state = last-event timestamp; attributes.event_type = press type.
+# Do NOT replace these with button.* entities (those represent commands).
+# See the guide for setup, startup/recovery filtering, and testing limitations.
+
+alias: Event2Action Matter remote adapter (untested example)
+description: Convert Matter event-entity button presses into Event2Action bus events.
+initial_state: false  # Enable deliberately; remove this line when ready to retain on/off state.
+
+triggers:
+  - trigger: state
+    entity_id:
+      - event.YOUR_REMOTE_button_1
+      - event.YOUR_REMOTE_button_2
+    # Empty `to` watches state changes, not attribute-only changes.
+    to: null
+
+conditions:
+  # Do not interpret startup/restoration/availability recovery as a press.
+  # This deliberately also ignores the first state when no prior timestamp exists.
+  - condition: template
+    value_template: >-
+      {{ trigger.from_state is not none
+         and trigger.to_state is not none
+         and trigger.from_state.state not in ['unknown', 'unavailable', '']
+         and trigger.to_state.state not in ['unknown', 'unavailable', '']
+         and not trigger.from_state.attributes.get('restored', false)
+         and trigger.from_state.state != trigger.to_state.state
+         and trigger.to_state.attributes.get('event_type') is string
+         and (trigger.to_state.attributes.event_type | trim | length) > 0 }}
+
+actions:
+  # 1. Keep the event entity ID and event type as the button/action identity.
+  # Some entities multiplex buttons through an extra `button` attribute; retain
+  # it when present. Do not assume every Matter remote uses the same press names.
+  - variables:
+      source_command: "{{ trigger.to_state.attributes.event_type | trim }}"
+      source_button: >-
+        {{ 'button_' ~ (trigger.to_state.attributes.button | string | trim)
+           if trigger.to_state.attributes.get('button') is not none
+           and (trigger.to_state.attributes.button | string | trim | length) > 0
+           else '' }}
+
+  # 2. Forward to Event2Action. Never put the changing event timestamp in code.
+  - event: event2action_bus
+    event_data:
+      proto: matter
+      code: >-
+        {{ trigger.entity_id ~ ('/' ~ source_button if source_button else '')
+           ~ '/' ~ source_command }}
+      command: "{{ source_command }}"
+      # OPTIONAL display identity: this is an HA entity ID, NOT a Zigbee IEEE address.
+      device_ieee: "{{ trigger.entity_id }}"
+      # OPTIONAL diagnostics:
+      # source: matter
+      # origin_entity: "{{ trigger.entity_id }}"
+      # raw: "{{ trigger.to_state.attributes }}"
+
+# Renaming event entities changes match keys: update/relearn affected mappings.
+# One automation can list all selected button event entities from several remotes.
+# Do not run overlapping adapters forwarding the same entity's events twice.
+mode: queued
+max: 10
+# OPTIONAL:
+# id: event2action_matter_reference_adapter
+# trace:
+#   stored_traces: 10

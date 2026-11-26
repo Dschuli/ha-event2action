@@ -53,6 +53,8 @@ For another source, copy the inactive [custom adapter YAML](examples/adapters/cu
 
 For Zigbee2MQTT remotes publishing JSON `action` messages, [example YAML code is provided](examples/adapters/zigbee2mqtt-event-adapter.yaml). Enable `mqtt.include_device_information: true` in Zigbee2MQTT, paste the example into a new automation, and set only the remote's MQTT topic. Its IEEE address is taken from `device.ieeeAddr` automatically. Follow the guide's retained-message precautions before enabling it.
 
+For Matter remotes exposed as `event.*` entities, use the [Matter YAML example](examples/adapters/matter-event-adapter.yaml) and set the button entity IDs. **Both Z2M and Matter examples need hardware testing; the author does not have those devices.** See the adapter guide for limitations and test-report instructions.
+
 You can also open the guide through **Adapter examples** in the Event2Action sidebar page header. The link opens GitHub in a new tab; examples are not activated automatically.
 
 Maps and new undo snapshots persist through the HA Store API in `.storage/event2action.maps`; button execution reads memory. Do not edit that file directly. Use JSON export for a portable map backup.

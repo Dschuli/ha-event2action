@@ -20,6 +20,29 @@ The RF433 example is also disabled and not loaded automatically. Do not enable i
 
 ## Create an adapter
 
+**Hardware testing needed:** The Zigbee2MQTT and Matter examples (marked with an asterisk in the main README) have not been verified on physical devices because the author does not have those devices. YAML and example transformations are checked locally. Please test before relying on them, and [report results or corrections](https://github.com/Dschuli/ha-event2action/issues/new) with your model, HA/source versions, and a redacted payload or event-entity state/attributes.
+
+### Matter remote example
+
+[matter-event-adapter.yaml](matter-event-adapter.yaml) can be pasted into a new HA automation. Replace the placeholder `event.*` entity IDs with the remote's actual button entities. One automation may list several buttons/remotes. Set up the device through HA's Matter integration first; Matter-over-Thread devices also require a working Thread border router. MQTT is not involved.
+
+The example watches changes to event entity timestamps and reads `attributes.event_type`, preserving the press names exposed by the device. If a `button` attribute is present, it is also included in the code to distinguish buttons sharing an entity. For example, entity `event.remote_button_1`, a changed timestamp, and `event_type: double_press` produce:
+
+```yaml
+proto: matter
+code: event.remote_button_1/double_press
+command: double_press
+device_ieee: event.remote_button_1
+```
+
+Here `device_ieee` is optional display metadata containing an HA entity ID, not an IEEE address. With an additional `button: 2` attribute, the code would be `event.remote_button_1/button_2/double_press`. The timestamp is never part of the match key. Entity renames require updating/relearning affected mappings.
+
+The guard ignores attribute-only changes, unknown/unavailable states, and recovery from missing/restored/unknown/unavailable state. This avoids treating recovery as a press, but deliberately ignores the first update when no prior valid timestamp exists; press again after recovery. It cannot guarantee removal of every device/integration replay. The `event.received` trigger is an alternative when selecting specific known event types; this generic example uses a state trigger to capture all types without a model-specific list.
+
+Enable deliberately after saving. Verify real presses, repeated presses of the same type, multiple buttons, long/double press behavior, and startup/reconnection without false actions. Use the real remote; Run actions has no state-trigger payload. Do not run overlapping adapters for the same entities. The example does not implement continuous rotary/dimmer behavior from device-specific attributes.
+
+References: [HA Matter integration](https://www.home-assistant.io/integrations/matter/), [event entity timestamps and types](https://www.home-assistant.io/integrations/event/), and [event received trigger](https://www.home-assistant.io/triggers/event.received/).
+
 ### Zigbee2MQTT remote example
 
 [zigbee2mqtt-event-adapter.yaml](zigbee2mqtt-event-adapter.yaml) can be pasted directly into a new HA automation's YAML editor. It is an example for remotes that publish a JSON `action` field; it is not a built-in adapter or a claim of testing every model.
