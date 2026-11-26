@@ -200,6 +200,7 @@ Acceptance: users can return to the previous release and known map snapshot with
 
 ## 12. Publish and retire the legacy distribution
 
+- [ ] Before publishing, change the sidebar's **Adapter examples** link in `src/e2a-panel.js` from `integration-migration` to `main`, ensure the examples are merged into `main`, and rebuild the frontend bundles with `npm run build`.
 - [ ] Validate current Marketplace/HACS integration packaging requirements before changing distribution metadata.
 - [ ] Decide how the existing card listing transitions to the integration listing; document the path for current users.
 - [ ] Add release automation that builds and packages matching backend and frontend versions.

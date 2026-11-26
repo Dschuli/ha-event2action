@@ -2693,6 +2693,11 @@ class Event2ActionPanel extends s {
       <header>
         <ha-menu-button .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>
         <h1>Event2Action</h1>
+        <a class="examples-link"
+          href="https://github.com/Dschuli/ha-event2action/tree/integration-migration/examples/adapters"
+          target="_blank" rel="noopener noreferrer">
+          Adapter examples
+        </a>
       </header>
       <main>
         <event2action-learning-card .hass=${this.hass}></event2action-learning-card>
@@ -2715,6 +2720,7 @@ __publicField(Event2ActionPanel, "styles", i$1`
     }
     header {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       min-height: 56px;
       padding: 0 16px 0 4px;
@@ -2722,6 +2728,18 @@ __publicField(Event2ActionPanel, "styles", i$1`
       background: var(--app-header-background-color, var(--card-background-color));
     }
     h1 { font-size: 20px; font-weight: 400; margin: 0 12px; }
+    .examples-link {
+      margin-inline-start: auto;
+      padding: 12px 8px;
+      color: inherit;
+      font-size: 14px;
+      text-underline-offset: 3px;
+    }
+    .examples-link:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
     main { padding: 16px; box-sizing: border-box; min-width: 0; }
     event2action-learning-card { display: block; min-width: 0; }
   `);

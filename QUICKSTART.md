@@ -51,6 +51,8 @@ RF433 and ZHA adapters are built in. Custom UI/YAML automations can fire `event2
 
 For another source, copy the inactive [custom adapter YAML](examples/adapters/custom-event-adapter.yaml) and follow its [guide](examples/adapters/README.md). Do not duplicate the built-in RF433/ZHA adapters.
 
+You can also open the guide through **Adapter examples** in the Event2Action sidebar page header. The link opens GitHub in a new tab; examples are not activated automatically.
+
 Maps and new undo snapshots persist through the HA Store API in `.storage/event2action.maps`; button execution reads memory. Do not edit that file directly. Use JSON export for a portable map backup.
 
 See [README.md](README.md) for storage behavior, troubleshooting, and rollback, and [the editor reference](e2a-mapping-editor-reference.md) for card options.
