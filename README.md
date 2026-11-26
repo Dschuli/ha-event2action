@@ -4,7 +4,11 @@
 
 Event2Action is the missing **button-learning layer for Home Assistant**. Use its visual learning interface to map **RF433 and IR remotes, Zigbee buttons, MQTT and ESPHome events**, or virtually any other Home Assistant event to actions—without creating a separate automation for every button.
 
-![Event2Action learning mode with an active mapping editor](pictures/e2a-editor-learning-mode.png)
+<table>
+  <tr>
+    <td><img src="pictures/e2a-editor-learning-mode.png" alt="Event2Action learning mode with an active mapping editor" /></td>
+  </tr>
+</table>
 
 - ✅ Reuse old RF433 and IR remotes
 - ✅ Map Zigbee buttons and scene switches
@@ -15,30 +19,6 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 > **Integration migration:** This branch replaces the YAML/MQTT runtime with a bundled custom integration. Export your old map before upgrading and follow the migration steps below. Local tests pass; validation in a running Home Assistant instance is still required.
 
 > **Legacy status:** Event2Action is stable in my daily Home Assistant installation and has been running reliably for several months. The configuration UI and setup process are still evolving, so feedback and issue reports are welcome.
-
-## Supported Event Sources
-
-| Event source | Support |
-|---|---|
-| RF433 via ESPHome | ✅ Adapter included |
-| Zigbee via ZHA | ✅ Adapter included |
-| Zigbee2MQTT | Easy custom adapter |
-| MQTT events | Easy custom adapter |
-| ESPHome custom events | Easy custom adapter |
-| IR receivers | Easy custom adapter |
-| Any Home Assistant event | Supported through an event adapter |
-
-A **custom event adapter** can be a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The integration includes adapters for `esphome.rf433` and `zha_event`. Custom adapters can still fire `event2action_bus` from UI/YAML automations without Python code.
-
-Start with the inactive [YAML adapter template](examples/adapters/custom-event-adapter.yaml) and its [setup and optional-feature guide](examples/adapters/README.md). It shows an incoming event, payload-to-code transformation, and outgoing bus event. The integration does not load or activate the example.
-
-In Home Assistant, select **Adapter examples** in the Event2Action sidebar page header to open the guide and YAML examples on GitHub in a new tab.
-
-A disabled [working ZHA YAML example](examples/adapters/zha-event-adapter.yaml) demonstrates the same structure with real Zigbee/ZHA payloads and matches the built-in normalization. Keep it disabled alongside the integration's built-in ZHA adapter.
-
-The disabled [ESPHome RF433 YAML example](examples/adapters/esphome-rf433-event-adapter.yaml) shows `esphome.rf433` normalization, protocol fallback, and field defaults. Keep it disabled alongside the built-in RF433 adapter.
-
-Need an adapter for another event source? The author offers help creating additional adapters. [Open a GitHub issue](https://github.com/Dschuli/ha-event2action/issues/new) with your event source/device, incoming event type, and an example payload with sensitive information removed.
 
 ## Why Event2Action?
 
@@ -57,6 +37,34 @@ Need an adapter for another event source? The author offers help creating additi
 3. Select a Home Assistant entity and action.
 4. Save the mapping.
 5. Press the button again—done.
+
+## Supported Event Sources
+
+| Event source | Support |
+|---|---|
+| RF433 remotes and wall switches via ESPHome | ✅ Built-in adapter |
+| Zigbee buttons and scene switches via ZHA | ✅ Built-in adapter |
+| Zigbee buttons and scene switches via Zigbee2MQTT | [Example YAML code provided](examples/adapters/zigbee2mqtt-event-adapter.yaml) |
+| Other MQTT messages | Custom adapter required |
+| ESPHome custom events | Custom adapter required |
+| IR receivers | Custom adapter required (depends on receiver/event format) |
+| Other Home Assistant events | Custom adapter required |
+
+**Built-in adapter** means no additional automation is needed. **Example YAML code provided** means copy the supplied automation and set its device-specific values. **Custom adapter required** means adapt the [generic template](examples/adapters/custom-event-adapter.yaml) or write an automation for your source's payload. These are setup requirements, not different processing modes: every adapter sends the same normalized `event2action_bus` event. Examples are not automatically installed or hardware-verified for every device.
+
+A **custom event adapter** can be a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The integration includes adapters for `esphome.rf433` and `zha_event`. Custom adapters can still fire `event2action_bus` from UI/YAML automations without Python code.
+
+Start with the inactive [YAML adapter template](examples/adapters/custom-event-adapter.yaml) and its [setup and optional-feature guide](examples/adapters/README.md). It shows an incoming event, payload-to-code transformation, and outgoing bus event. The integration does not load or activate the example.
+
+In Home Assistant, select **Adapter examples** in the Event2Action sidebar page header to open the guide and YAML examples on GitHub in a new tab.
+
+A disabled [working ZHA YAML example](examples/adapters/zha-event-adapter.yaml) demonstrates the same structure with real Zigbee/ZHA payloads and matches the built-in normalization. Keep it disabled alongside the integration's built-in ZHA adapter.
+
+The disabled [ESPHome RF433 YAML example](examples/adapters/esphome-rf433-event-adapter.yaml) shows `esphome.rf433` normalization, protocol fallback, and field defaults. Keep it disabled alongside the built-in RF433 adapter.
+
+For Zigbee2MQTT, use the [copy-and-edit YAML automation](examples/adapters/zigbee2mqtt-event-adapter.yaml): enable `mqtt.include_device_information: true` in Zigbee2MQTT, enter only the remote's exact MQTT topic in the automation, then enable it. The adapter reads the IEEE address from `device.ieeeAddr` automatically. It handles all nonempty JSON `action` values without a per-button list. MQTT is used only for incoming events; map storage stays in HA. See the [adapter guide](examples/adapters/README.md#zigbee2mqtt-remote-example) for prerequisites and retained-message handling.
+
+Need an adapter for another event source? The author offers help creating additional adapters. [Open a GitHub issue](https://github.com/Dschuli/ha-event2action/issues/new) with your event source/device, incoming event type, and an example payload with sensitive information removed.
 
 ## Documentation
 

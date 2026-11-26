@@ -1,0 +1,70 @@
+# Paste into ONE new Home Assistant automation's YAML editor.
+# Change only triggers[0].topic: a device JSON topic or a remote-only wildcard.
+# One automation can cover multiple remotes, each publishing to its own topic:
+#   zigbee2mqtt/remotes/living_room
+#   zigbee2mqtt/remotes/bedroom
+# Subscribe to zigbee2mqtt/remotes/+ to receive both. '+' matches one topic level.
+# In Z2M, use friendly names remotes/living_room and remotes/bedroom for this layout.
+# Each message's IEEE address keeps the remotes' mapping keys separate.
+# Do not subscribe to /action, /set, or /availability subtopics.
+# REQUIRED in Zigbee2MQTT configuration (merge into the existing mqtt section):
+# mqtt:
+#   include_device_information: true
+# The device IEEE address is read automatically from payload.device.ieeeAddr.
+# Requires an already working HA MQTT integration and Zigbee2MQTT installation.
+# Supports remotes publishing JSON {"action":"..."}; no per-button edits needed.
+#
+# IMPORTANT: configure this remote with retain: false in Zigbee2MQTT and clear
+# any old retained message on its exact topic before enabling this automation.
+# HA's YAML MQTT trigger does not expose a retain flag to filter replayed presses.
+# Do not run another adapter forwarding the same remote into Event2Action.
+# This file is not loaded automatically by the integration.
+
+alias: Event2Action Zigbee2MQTT remote adapter (example)
+description: Forward nonempty JSON action messages from one or more Z2M remotes.
+initial_state: false  # Enable deliberately; remove this line when ready to retain on/off state.
+
+triggers:
+  - trigger: mqtt
+    topic: "zigbee2mqtt/YOUR_REMOTE_NAME"  # Or "zigbee2mqtt/remotes/+" for multiple remotes.
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.payload_json is defined
+         and trigger.payload_json is mapping
+         and trigger.payload_json.get('action') is string
+         and (trigger.payload_json.action | trim | length) > 0
+         and trigger.payload_json.get('device') is mapping
+         and trigger.payload_json.device.get('ieeeAddr') is string
+         and (trigger.payload_json.device.ieeeAddr | trim | length) > 0 }}
+
+actions:
+  # 1. Create a stable device/action key. Preserve Z2M's action vocabulary,
+  # including button numbers, double presses, holds, and releases.
+  - variables:
+      remote_ieee: "{{ trigger.payload_json.device.ieeeAddr | trim }}"
+      source_device_key: >-
+        {{ trigger.payload_json.device.ieeeAddr | trim | lower | replace('0x', '')
+           | replace(':', '') | replace('-', '') }}
+      source_command: "{{ trigger.payload_json.action | trim }}"
+
+  # 2. Forward to Event2Action. MQTT is only the incoming event transport;
+  # maps and undo backups remain in Home Assistant storage.
+  - event: event2action_bus
+    event_data:
+      proto: zigbee2mqtt
+      code: "{{ source_device_key ~ '/' ~ source_command }}"
+      device_ieee: "{{ remote_ieee }}"
+      command: "{{ source_command }}"
+      # OPTIONAL diagnostics:
+      # source: zigbee2mqtt
+      # origin_topic: "{{ trigger.topic }}"
+      # raw: "{{ trigger.payload_json }}"
+
+mode: queued
+max: 10
+# OPTIONAL: enable automation traces with a unique ID when using automations.yaml.
+# id: event2action_z2m_remote_adapter
+# trace:
+#   stored_traces: 10

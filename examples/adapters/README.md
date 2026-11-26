@@ -20,6 +20,60 @@ The RF433 example is also disabled and not loaded automatically. Do not enable i
 
 ## Create an adapter
 
+### Zigbee2MQTT remote example
+
+[zigbee2mqtt-event-adapter.yaml](zigbee2mqtt-event-adapter.yaml) can be pasted directly into a new HA automation's YAML editor. It is an example for remotes that publish a JSON `action` field; it is not a built-in adapter or a claim of testing every model.
+
+1. Confirm Zigbee2MQTT and Home Assistant's MQTT integration already work.
+2. Enable `mqtt.include_device_information: true` in Zigbee2MQTT (merge into its existing `mqtt:` section). Verify a new message contains `device.ieeeAddr`. Copy the remote's exact device JSON topic; do not use `/action`, `/set`, or `/availability`.
+3. Set the remote's Zigbee2MQTT `retain` option to `false`. If its topic already has a retained message, clear that retained message before enabling the automation. The YAML MQTT trigger does not expose a retained flag, so the example cannot itself distinguish an old retained press from a live press. Also verify your source does not republish cached actions with unrelated updates.
+4. Paste the YAML and replace only the trigger `topic`. The IEEE address is read from the message automatically. Save and deliberately enable it; remove `initial_state: false` once ready if you want HA to remember the enabled state across restarts.
+5. Listen for `event2action_bus`, press each button, and learn its action in Event2Action. Also verify reconnecting MQTT does not execute an old press.
+
+Example input on `zigbee2mqtt/living_room_remote`:
+
+```json
+{"action": "1_double", "battery": 90, "device": {"ieeeAddr": "0x00158d0001234567"}}
+```
+
+With that payload, the match key is protocol `zigbee2mqtt`, code `00158d0001234567/1_double`. The command is `1_double`. Missing/null/blank actions or device IEEE addresses, non-JSON payloads, and non-object JSON are ignored. If no events arrive, first check that device information is enabled in Zigbee2MQTT; battery-only messages do not become events. Distinct action strings are preserved, so no model-specific list is needed. This is discrete-action mapping, not continuous dimming based on extra step/rotation attributes.
+
+The IEEE address from the payload keeps existing map keys stable if you rename a remote. Update an exact-topic subscription when its topic changes; a wildcard subscription keeps working if the new topic still matches. MQTT remains an event-source dependency; Event2Action's maps and backups still use HA storage.
+
+#### Cover multiple remotes with one automation
+
+The remotes do not need to publish to the same exact topic. Give them Zigbee2MQTT friendly names such as `remotes/living_room` and `remotes/bedroom`. With the default base topic, their JSON messages appear on:
+
+```text
+zigbee2mqtt/remotes/living_room
+zigbee2mqtt/remotes/bedroom
+```
+
+Change only the example's trigger topic to:
+
+```yaml
+triggers:
+  - trigger: mqtt
+    topic: "zigbee2mqtt/remotes/+"
+```
+
+`+` matches one topic level, covering both remotes without their `/set`, `/action`, or `/availability` subtopics. Devices with further nested names need a subscription matching that layout. Adjust `zigbee2mqtt` if you use another base topic. This is an alternative trigger, not an additional automation to install alongside an overlapping copy.
+
+Keep `mqtt.include_device_information: true` enabled. Each message supplies its own `device.ieeeAddr`, so two remotes sending `1_single` still produce different Event2Action codes. The same automation handles new remotes placed under this topic prefix without per-device IEEE settings. Apply the retained-message precautions above to every remote covered by the subscription.
+
+Alternatively, use separate exact-topic automations for selected remotes. **Only one adapter should forward each remote:** do not run both a wildcard adapter and an exact-topic adapter covering that same device, or overlapping wildcard subscriptions. Prefer a remote-only prefix over a broad `zigbee2mqtt/#` subscription, which also receives bridge/control traffic.
+
+Required Zigbee2MQTT setting (not Home Assistant configuration; merge with existing MQTT settings):
+
+```yaml
+mqtt:
+  include_device_information: true
+```
+
+References: [device information setting](https://www.zigbee2mqtt.io/guide/configuration/all-settings.html#include_device_information), [Zigbee2MQTT device messages](https://www.zigbee2mqtt.io/guide/usage/mqtt_topics_and_messages.html), [device configuration](https://www.zigbee2mqtt.io/guide/configuration/devices-groups.html), and [HA MQTT trigger](https://www.home-assistant.io/triggers/mqtt/).
+
+### Generic Home Assistant event example
+
 1. In Developer Tools → Events, listen to your source event and inspect a real payload.
 2. Create a new, empty automation and open its YAML editor. Paste the example as one automation; there is no top-level `automation:` key or list dash.
 3. Change the incoming event type, required-field guard, variable transformations, and protocol namespace to fit your source. Give the automation a descriptive name.
