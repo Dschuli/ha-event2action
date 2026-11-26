@@ -12,7 +12,9 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 - ✅ Control lights, plugs, scenes, scripts, and automations
 - ✅ Keep everything local, with no cloud dependency
 
-> **Current status:** Event2Action is stable in my daily Home Assistant installation and has been running reliably for several months. The configuration UI and setup process are still evolving, so feedback and issue reports are welcome.
+> **Integration migration:** This branch replaces the YAML/MQTT runtime with a bundled custom integration. Export your old map before upgrading and follow the migration steps below. Local tests pass; validation in a running Home Assistant instance is still required.
+
+> **Legacy status:** Event2Action is stable in my daily Home Assistant installation and has been running reliably for several months. The configuration UI and setup process are still evolving, so feedback and issue reports are welcome.
 
 ## Supported Event Sources
 
@@ -26,7 +28,15 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 | IR receivers | Easy custom adapter |
 | Any Home Assistant event | Supported through an event adapter |
 
-An **event adapter** is a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The included adapters listen for `esphome.rf433` and `zha_event`; they provide practical examples for connecting other sources.
+A **custom event adapter** can be a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The integration includes adapters for `esphome.rf433` and `zha_event`. Custom adapters can still fire `event2action_bus` from UI/YAML automations without Python code.
+
+Start with the inactive [YAML adapter template](examples/adapters/custom-event-adapter.yaml) and its [setup and optional-feature guide](examples/adapters/README.md). It shows an incoming event, payload-to-code transformation, and outgoing bus event. The integration does not load or activate the example.
+
+A disabled [working ZHA YAML example](examples/adapters/zha-event-adapter.yaml) demonstrates the same structure with real Zigbee/ZHA payloads and matches the built-in normalization. Keep it disabled alongside the integration's built-in ZHA adapter.
+
+The disabled [ESPHome RF433 YAML example](examples/adapters/esphome-rf433-event-adapter.yaml) shows `esphome.rf433` normalization, protocol fallback, and field defaults. Keep it disabled alongside the built-in RF433 adapter.
+
+Need an adapter for another event source? The author offers help creating additional adapters. [Open a GitHub issue](https://github.com/Dschuli/ha-event2action/issues/new) with your event source/device, incoming event type, and an example payload with sensitive information removed.
 
 ## Why Event2Action?
 
@@ -62,18 +72,18 @@ An **event adapter** is a simple Home Assistant automation that converts a sourc
 - **Backup and undo**: session and step-level backups
 - **Import/export**: save and restore mappings as JSON
 - **Event blocking**: temporarily suppress action execution while learning
-- **MQTT storage**: publish runtime maps and backups through Home Assistant MQTT sensors
+- **Home Assistant storage**: maps and undo backups are stored locally through the HA Store API, with no MQTT dependency
 
 ## How It Works
 
 Event adapters translate source-specific payloads into a stable protocol/code pair and fire the shared `event2action_bus` event. The learning card captures that normalized event and stores its action mapping. The central bus handler then executes the mapped Home Assistant action whenever the event occurs again.
 
-For example, `event2action_zha_feeder` uses `ZHA` as the protocol and derives a distinctive code from the device's full IEEE address, endpoint, and command (such as press, double press, or long press). Use it as a template for IR receivers, MQTT devices, NFC scans, doorbells, BLE buttons, or other event sources.
+For example, the built-in ZHA adapter uses `zha` as the protocol and derives a distinctive code from the device's full IEEE address, endpoint, and command (such as press, double press, or long press). Use it as a template for IR receivers, MQTT devices, NFC scans, doorbells, BLE buttons, or other event sources.
 
 ## Requirements
 
-- Home Assistant 2024.1 or newer
-- MQTT Broker, such as Mosquitto
+- Home Assistant 2026.11 or newer
+- Administrator access to configure Event2Action and edit maps
 - Modern web browser for the Lovelace card
 - At least one event source:
   - RF433 source that fires Home Assistant events named `esphome.rf433`
@@ -81,59 +91,56 @@ For example, `event2action_zha_feeder` uses `ZHA` as the protocol and derives a 
 
 ## Installation
 
-### 1. Home Assistant Package
+Event2Action is now an integration with a bundled card. Do not install the old YAML package or a separate copy of the card.
 
-HACS installs the Lovelace card only. It does not copy the Home Assistant package into your config directory.
+1. For this development version, copy `custom_components/event2action/` (including its `frontend/` folder) into `/config/custom_components/event2action/`.
+2. Restart Home Assistant.
+3. Open **Settings → Devices & services → Add integration → Event2Action** and complete setup.
+4. Reload the browser. The integration automatically loads the bundled card; no dashboard resource entry is required. Its `brand/` folder supplies the integration icon.
+5. Open **Event2Action** in the sidebar. Its full-page learning interface is created automatically; no dashboard view is required.
 
-From the Home Assistant Terminal/SSH add-on, download the package file into `/config/packages/`:
-
-```bash
-mkdir -p /config/packages
-wget -O /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
-```
-
-If your terminal does not have `wget`, use `curl` instead:
-
-```bash
-mkdir -p /config/packages
-curl -L -o /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
-```
-
-Make sure package loading is enabled in `configuration.yaml`:
-
-```yaml
-homeassistant:
-  packages: !include_dir_named packages
-```
-
-If you already have a `homeassistant:` section, add only the `packages:` line under it. Restart Home Assistant after adding the package or changing `configuration.yaml`.
-
-### 2. Automations
-
-The package contains three automations. The two adapter automation names retain the legacy term `Feeder` for compatibility:
-
-- `Event2Action RF433 Feeder`: RF433 event adapter that listens for `esphome.rf433`
-- `Event2Action ZHA Feeder`: ZHA event adapter that listens for `zha_event`
-- `Event2Action Bus Handler`: stores the latest normalized event and runs mapped actions
-
-It also creates the required MQTT sensors, helper entities, and helper script used by the card.
-
-### 3. Dashboard Card
-
-Add the card resource:
-
-```yaml
-url: /hacsfiles/ha-event2action/event2action-learning-card.js
-type: module
-```
-
-Then add the Lovelace card:
+Optionally, add the card to a dashboard if you want a separate view or custom card configuration:
 
 ```yaml
 type: custom:event2action-learning-card
 ```
 
-Use this card in a dedicated panel view. A panel subview is also a good option if you want to keep Event2Action out of the normal dashboard tab list. `mdi:remote` works well as the view icon.
+The automatic sidebar page uses default card options; existing dashboard cards retain their own configuration. Use a dedicated panel view for a customized dashboard card if desired. The integration runs independently of whether its card is open. The card's storage/learning API requires an administrator account.
+
+For HACS/Marketplace, this repository must be installed as an **Integration**, rather than Dashboard. Its existing dashboard catalog listing does not change category automatically; publisher/catalog changes remain necessary. Manual installation above works independently of that listing.
+
+### Upgrade from the YAML/MQTT version
+
+1. Export the current map to JSON using the old card. Keep that file and any custom dashboard card configuration. A Home Assistant backup is recommended.
+2. Remove `/config/packages/event2action.yaml` from the packages include and remove the old standalone card installation and resource reference.
+3. Restart Home Assistant to stop the old runtime **before** installing the integration.
+4. Install and set up the integration as above, then use **Import Map**. Verify the mapping count and test representative buttons.
+
+**Old session and step backups do not transfer. Blocking duration starts at 60 seconds.** New undo history is created by the integration. Learning starts off with no active block. Keep the original export for rollback.
+
+Keep MQTT if other integrations use it, and keep the package include if other packages use it. External automations that reference old helpers or `script.temporary_toggle` need updating. Custom adapters firing `event2action_bus` continue to work.
+
+For rollback, disable/remove the integration and restart first, restore the previous package/card version and resource, restart, and import your original JSON if needed. This restores the exported snapshot, not subsequent edits.
+
+### Storage
+
+Maps, settings, and fresh undo snapshots are stored in `/config/.storage/event2action.maps` through Home Assistant's versioned Store API. Do not edit this file manually. Maps are loaded into memory at setup; button presses do not access disk. Saves are acknowledged only after disk verification. JSON export/import remains the portable backup path.
+
+When several entries share the same protocol and code, the first active entry in map order executes. Inactive entries are skipped; if none are active, no action runs.
+
+Repeated events mapped to the same toggle action within the configured interval (500 ms by default) are ignored for action execution, preventing radio repeats from toggling a device on and immediately off. The window uses event arrival time and does not delay other mappings. Repeated events remain visible for learning; non-toggle actions are unaffected.
+
+### Shared learning and blocking
+
+Learning mode and event blocking are shared across all Event2Action cards, including the sidebar page and dashboard views. Switching views keeps both states in sync. A learning session captures its backup once, even when multiple cards are open. Unsaved editor drafts remain local to each card; save before changing views. Learning starts off after an HA restart.
+
+With **Auto unblock** enabled on the last card to disconnect, the backend unblocks after a 3-second grace period if no card reconnects. Switching to another Event2Action view during that period preserves the block. Closing one of several cards does not unblock the others; the configured blocking timer still expires normally.
+
+### Runtime settings
+
+**Show in sidebar** is enabled by default. Turn it off under **Settings → Devices & services → Event2Action → Configure** to hide the sidebar entry immediately. The integration keeps running, existing dashboard cards keep working, and administrators can still open `/event2action-learning` directly.
+
+Open **Settings → Devices & services → Event2Action → Configure** to set **Toggle repeat suppression (ms)**. The default is **500**; **0** disables suppression. Changes apply immediately without a restart. The option is stored with the integration configuration, separately from map JSON exports.
 
 ## Event Source Expectations
 
@@ -229,56 +236,33 @@ prefill_service_data:
   "*dimmer_control|script.turn_on": '{"light_entity":" ","steps":5,"bounce_at_top":false}'
 ```
 
-MQTT sensor names, MQTT topics, and helper entity names remain code-level defaults in `src/e2a-config.js`; most installations should not need to change them.
+The card editor groups **Custom common service data keys** and **Prefill service data** into collapsible sections. Both start collapsed and remember their expanded state in the same browser.
+
+Card options remain in dashboard configuration. The runtime blocking duration is stored by the integration. No MQTT topics or helper sensor names need configuring.
 
 ## Troubleshooting
 
-### No Events Appear
+- **Integration unavailable:** confirm Event2Action is configured under Devices & services, use an administrator account, and reload the browser after setup.
+- **Card missing or old UI:** remove old `/hacsfiles/` or `/local/` Event2Action resource references, then refresh the browser. The integration serves `/event2action/event2action-learning-card.js` automatically.
+- **No events:** listen for `event2action_bus` in Developer Tools and test `esphome.rf433` or `zha_event`. Custom adapters must supply stable string `proto` and `code` values.
+- **No action:** check the map entry is active, the target/service exists, and events are unblocked. Review Home Assistant logs for Event2Action errors.
+- **Import rejected:** the error identifies the entry and field. Proto/code must be nonempty strings; active entries need valid target/service fields, and service data must be an object. Older v0.1.3-beta maps require the separate conversion tool.
+- **Save failed:** the previous map remains active. Check storage permissions/free space. Keep the draft and retry after resolving the error.
+- **Another session changed the map:** reload the card and review the newer data before saving.
 
-1. In Developer Tools -> Events, listen for `event2action_bus`.
-2. Fire or trigger an `esphome.rf433` or `zha_event`.
-3. Verify `/config/packages/event2action.yaml` is installed and Home Assistant was restarted.
-4. Check that `input_text.event2action_last_event_store` is updated.
-
-### Learning Mode Not Working
-
-1. Verify the required helper entities exist.
-2. Verify the MQTT sensors from `packages/event2action.yaml` are present.
-3. Check browser console output for card errors.
-4. Clear the browser cache after frontend file changes.
-
-### Mappings Not Executing
-
-1. Verify `sensor.event2action_runtime_map` contains a map attribute.
-2. Confirm `input_boolean.event2action_block_events` is off.
-3. Check the target entity and service still exist.
-4. Review the automation trace for `Event2Action Bus Handler`.
-
-## Project Structure
+## Development and project structure
 
 ```text
-ha-event2action/
-├── dist/
-│   └── event2action-learning-card.js  # Built Lovelace card loaded by HACS/Home Assistant
-├── packages/
-│   └── event2action.yaml              # Home Assistant package: helpers, MQTT sensors, scripts, automations
-├── migration/
-│   ├── migrate-v0.1.3-to-v0.2.0.js    # Standalone mapping migration utility
-│   └── README.md                       # Migration procedure and safety notes
-├── src/
-│   ├── e2a-learning-card.js           # Main learning card
-│   ├── e2a-editor.js                  # Mapping editor UI
-│   ├── e2a-card-editor.js             # Lovelace card config editor
-│   ├── e2a-config.js                  # Default domains, topics, helpers, editor defaults
-│   ├── mixins/                        # Shared card mixins
-│   ├── styles/                        # Shared Lit CSS modules
-│   └── utils/                         # Utility helpers
-├── pictures/                          # README / documentation images
-├── hacs.json                          # HACS plugin metadata
-├── vite.config.js                     # Build config
-├── QUICKSTART.md
-└── README.md
+custom_components/event2action/   # Integration, runtime, Store, API, bundled frontend
+src/                              # Card and editor source
+legacy/event2action.yaml           # Old package, rollback reference only
+migration/                        # Older mapping-format conversion utility
+tests/                            # Runtime/storage and frontend boundary tests
+docs/runtime-compatibility.md      # Legacy behavior baseline and acceptance cases
 ```
+
+Run `npm run build` to rebuild `dist/` and the integration's `frontend/` copy together. Run `npm test` for focused tests. These use Home Assistant boundary doubles; a real HA installation is still required for integration setup, frontend registration, permissions, restart, and migration smoke testing.
+
 ## Acknowledgments
 
 - Home Assistant community for inspiration and support

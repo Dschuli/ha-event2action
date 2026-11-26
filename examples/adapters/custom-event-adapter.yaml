@@ -1,0 +1,71 @@
+# Event2Action adapter example — not installed or loaded by the integration.
+# Paste into ONE new automation's YAML editor, not into configuration.yaml.
+# Replace my_remote_button and the device_id/button/action payload fields.
+# Incoming example:
+#   event_type: my_remote_button
+#   data: {device_id: remote_1, button: 2, action: press}
+# Outgoing match key: proto=custom_remote, code=remote_1/2/press
+# See README.md in this directory for setup, testing, and optional features.
+
+alias: Event2Action custom event adapter (example)
+description: Translate one source event into Event2Action's normalized bus event.
+
+# Remains off after startup until you deliberately enable it.
+# Remove this line once ready if you want HA to remember its enabled state.
+initial_state: false
+
+triggers:
+  - trigger: event
+    event_type: my_remote_button
+    # OPTIONAL: accept only one device (exact payload match).
+    # event_data:
+    #   device_id: remote_1
+
+# Recommended guard for THIS example payload. Adapt/remove for your source.
+# Zero-valued button numbers are valid; absent/null/blank fields are rejected.
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.get('device_id') is not none
+         and trigger.event.data.get('button') is not none
+         and trigger.event.data.get('action') is not none
+         and (trigger.event.data.device_id | string | trim | length) > 0
+         and (trigger.event.data.button | string | trim | length) > 0
+         and (trigger.event.data.action | string | trim | length) > 0 }}
+
+actions:
+  # 1. Transform the incoming payload into stable identity fields.
+  - variables:
+      source_device: "{{ trigger.event.data.device_id | string | trim }}"
+      source_button: "{{ trigger.event.data.button | string | trim }}"
+      source_command: "{{ trigger.event.data.action | string | trim | lower }}"
+
+  # 2. Send the normalized event. Event2Action handles mapping and execution.
+  - event: event2action_bus
+    event_data:
+      # REQUIRED: use a distinct, stable namespace for this adapter family.
+      proto: custom_remote
+      # REQUIRED: include device + button + action to distinguish sources.
+      # Use another separator/encoding if your source fields can contain '/'.
+      # Never include timestamps, counters, battery level, or signal strength.
+      code: "{{ source_device ~ '/' ~ source_button ~ '/' ~ source_command }}"
+
+      # OPTIONAL but recommended: learning/display metadata, not matching keys.
+      device_ieee: "{{ source_device }}"  # A stable device ID is fine; need not be IEEE.
+      command: "{{ source_command }}"
+
+      # OPTIONAL diagnostics: uncomment only if useful; raw may contain secrets.
+      # source: custom_remote
+      # origin_event_type: "{{ trigger.event.event_type }}"
+      # raw: "{{ trigger.event.data }}"
+      # ts: "{{ now().isoformat() }}"
+
+# Process bursts in order without an adapter-level delay.
+mode: queued
+max: 10
+
+# OPTIONAL: retain a few automation traces for troubleshooting.
+# Set a unique `id` when maintaining this automation in automations.yaml.
+# id: event2action_custom_remote_adapter
+# trace:
+#   stored_traces: 10

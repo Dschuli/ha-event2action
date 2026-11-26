@@ -1,0 +1,62 @@
+# Working ZHA example using the custom-event-adapter.yaml structure.
+# Reference only: not installed or loaded by the integration.
+# KEEP DISABLED with Event2Action's built-in ZHA adapter, which already emits
+# these same bus events. Enabling both would duplicate events/actions.
+# This is for studying/adapting the normalization, not an installation step.
+#
+# Incoming: zha_event
+#   device_ieee: "AA:BB:CC:DD:EE:FF:00:11"
+#   endpoint_id: 1
+#   command: remote_button_short_press
+# Outgoing: proto=zha, code=aabbccddeeff0011-1-short_press
+
+alias: Event2Action ZHA event adapter (disabled example)
+description: Reference YAML equivalent of the integration's built-in ZHA adapter.
+initial_state: false
+
+triggers:
+  - trigger: event
+    event_type: zha_event
+    # OPTIONAL: restrict to one device (exact payload match).
+    # event_data:
+    #   device_ieee: "aa:bb:cc:dd:ee:ff:00:11"
+
+# Match the built-in adapter: ignore absent/null identity fields.
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.get('device_ieee') is not none
+         and trigger.event.data.get('endpoint_id') is not none
+         and trigger.event.data.get('command') is not none }}
+
+actions:
+  # 1. Transform source identity into the same stable code as the integration.
+  - variables:
+      source_device: "{{ trigger.event.data.device_ieee }}"
+      source_device_key: >-
+        {{ trigger.event.data.device_ieee | string
+           | replace(':', '') | replace('-', '') | lower }}
+      source_endpoint: "{{ trigger.event.data.endpoint_id | string }}"
+      source_command: >-
+        {{ trigger.event.data.command | string | replace('remote_button_', '') }}
+
+  # 2. Send the normalized event; mapping/execution stays in Event2Action.
+  - event: event2action_bus
+    event_data:
+      proto: zha
+      code: "{{ source_device_key ~ '-' ~ source_endpoint ~ '-' ~ source_command }}"
+      # OPTIONAL learning/display metadata, included here to match the adapter.
+      device_ieee: "{{ source_device }}"
+      command: "{{ source_command | trim }}"
+      # OPTIONAL diagnostics, included here as in the built-in adapter.
+      source: zha
+      origin_event_type: zha_event
+      raw: "{{ trigger.event.data }}"
+      ts: "{{ now().isoformat() }}"
+
+# OPTIONAL: serialize bursts and retain traces, as in the former YAML adapter.
+mode: queued
+max: 10
+# id: event2action_zha_reference_adapter
+# trace:
+#   stored_traces: 10

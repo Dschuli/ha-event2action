@@ -1,0 +1,29 @@
+{
+  "title": "Event2Action",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Event2Action",
+        "description": "Map RF433, ZHA, and custom events to actions. Maps are stored locally in Home Assistant; MQTT is not required. When upgrading, export your old map, remove the old YAML package and card resource, and restart Home Assistant before continuing. Import the JSON map in the card after setup. Old undo backups do not transfer; blocking duration starts at 60 seconds."
+      }
+    },
+    "abort": {
+      "already_configured": "Event2Action is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Event2Action settings",
+        "description": "Show or hide the Event2Action sidebar entry. The page remains accessible at /event2action-learning when hidden. Toggle repeat suppression ignores repeated events for the same toggle mapping within the interval below; 0 disables suppression. Changes apply immediately.",
+        "data": {
+          "toggle_repeat_ms": "Toggle repeat suppression (ms)",
+          "show_in_sidebar": "Show in sidebar"
+        }
+      }
+    },
+    "error": {
+      "invalid_toggle_repeat_ms": "Enter a whole number of milliseconds, 0 or greater."
+    }
+  }
+}

@@ -60,27 +60,12 @@ export const PREFILL_SERVICE_DATA = {
 
 // Default configuration values
 
-/* Automatically unblock event actions on leaving the learning card
-*		Note: Settintg AUTO_UNBLOCK to false can lead to unintended event blocking after leaving editor,
-*		when a long blocking period is set.
-*/
+/* Auto-unblock when the last card disconnects, after a backend grace period.
+ * Switching Event2Action views preserves the shared block and learning state.
+ */
 export const AUTO_UNBLOCK = true;
 export const DEFAULT_BLOCK_SECONDS = 60;	// Initial default seconds to block event actions
 
 // Logging levels: 0 = off, 1 = error only, 2 = error + warn, 3 = error + warn + info, 4 = all (debug)
 export const LOG_LEVEL = 2;
-
-// MQTT Sensors and Topics
-// NOTE: If you change the runtime mapping sensor, update the publishing automation too.
-export const EVENT_BUS_NAME = "event2action_bus";
-export const RUNTIME_MAPPING_SENSOR = "sensor.event2action_runtime_map";
-export const RUNTIME_MAPPING_TOPIC = "event2action/map";
-export const SESSION_BACKUP_SENSOR = "sensor.event2action_session_backup";
-export const SESSION_BACKUP_TOPIC = "event2action/session_backup";
-export const STEP_BACKUP_SENSOR = "sensor.event2action_step_backup";
-export const STEP_BACKUP_TOPIC = "event2action/step_backup";
-
-// Helper entities
-export const LASTEVENT_STORE = "input_text.event2action_last_event_store";
-export const BLOCKING_HELPER = "input_boolean.event2action_block_events";
 

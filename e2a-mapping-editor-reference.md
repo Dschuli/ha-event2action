@@ -3,7 +3,9 @@
 
 > **Note**: This is the detailed reference for the Event2Action learning interface and editor.
 > For initial setup, see [QUICKSTART.md](QUICKSTART.md) or [README.md](README.md).
-> The required Home Assistant helpers, MQTT sensors, scripts, and automations are provided by `packages/event2action.yaml`.
+> The Event2Action custom integration supplies the runtime, HA storage, and bundled card. MQTT and the old YAML package are not required. See [QUICKSTART.md](QUICKSTART.md).
+> Setup also adds an administrator-only Event2Action sidebar page with default card options. Dashboard cards remain optional and retain their individual card configuration.
+
 >
 
 ## Overview
@@ -67,8 +69,8 @@ Before using the Event2Action Learning Card, ensure you have completed the initi
 
 - **Quick Setup**: See [QUICKSTART.md](QUICKSTART.md) for a streamlined 5-minute setup guide
 - **Detailed Installation**: See [README.md](README.md) for complete installation instructions
-- **Home Assistant Package**: Install `packages/event2action.yaml` into `/config/packages/event2action.yaml`, enable package loading in `configuration.yaml`, and restart Home Assistant
-- **Setup Diagnostics**: The card shows a setup warning if the required package entities or services are missing
+- **Home Assistant Integration**: Install `custom_components/event2action/`, restart Home Assistant, and add Event2Action under Devices & services
+- **Setup Diagnostics**: The card shows a connection warning if the integration API is unavailable or the user lacks administrator access
 - **Dashboard Layout**: Use the card in a dedicated panel view, or a panel subview if you want to hide it from the normal dashboard tabs. `mdi:remote` is a good view icon.
 
 ---
@@ -199,7 +201,7 @@ These fields have no effect on the event processing. You can use them to organiz
   - Stored with the mapping and displayed by the learning card
   - Intended mainly for future functionality enhancements, such as referring to mappings by name
 
-While the editor works with any kind of event (through the appropriate event adapter), the remaining field names reflect the primary intended use and origin of this custom card and package.
+While the editor works with any kind of event (through the appropriate event adapter), the remaining field names reflect the primary intended use and origin of this card and integration.
 
 - **Remote**: Name/identifier of the remote control
   - Auto-suggests from existing values
@@ -256,11 +258,11 @@ While the editor works with any kind of event (through the appropriate event ada
 
 1. **Event Reception**
    - An event source fires a Home Assistant event, such as `esphome.rf433` or `zha_event`
-   - The packaged event adapter normalizes the event and forwards it to `event2action_bus`
-   - The packaged bus handler stores the latest normalized event in `input_text.event2action_last_event_store`
+   - The built-in event adapter normalizes the event and forwards it to `event2action_bus`
+   - The integration sends the latest normalized event to subscribed cards over WebSocket
 
 2. **Card Detection**
-   - Learning card monitors the input_text entity
+   - Learning card subscribes to the integration API
    - Detects new events by comparing timestamps
    - Filters out "old" events to prevent duplicate processing
 
@@ -271,23 +273,27 @@ While the editor works with any kind of event (through the appropriate event ada
 4. **Editor Workflow**
    - User modifies mapping in editor component
    - Changes tracked via internal state
-   - Save publishes to MQTT topic
-   - MQTT sensors update from retained MQTT payloads
+   - Save submits a validated map to the backend with its expected revision
+   - Backend persists and verifies the map through the HA Store API before acknowledging success
    - Card refreshes to show new mapping
+
+### Shared learning and blocking
+
+The backend shares learning mode and block status across the sidebar and dashboard instances. Joining an existing learning session does not create another session backup. Drafts remain local, so save before switching views. HA restart resets learning mode to off.
+
+Auto unblock applies after the last card disconnects, with a 3-second reconnection grace period. A different Event2Action card opening during that interval preserves blocking. Closing one of several cards leaves the shared block intact. The last card's Auto unblock preference controls this behavior; the normal timed expiry is independent.
+
+### Toggle repeat suppression
+
+This is an integration setting, separate from dashboard card options. Open **Settings → Devices & services → Event2Action → Configure** and set **Toggle repeat suppression (ms)**. The default is **500**; **0** disables suppression. Changes apply immediately without reloading the integration.
+
+The first active mapping for a protocol/code pair executes. Repeated events for that same toggle mapping within the configured interval are suppressed using event arrival time, even if processing is delayed in the queue. A repeat exactly at the interval boundary is allowed. Suppressed repeats do not extend the window. Other mappings and non-toggle actions are unaffected, and repeated events remain visible for learning. The integration option is not included in JSON map exports.
 
 ### Storage Architecture
 
-- **Runtime Mapping**: `sensor.event2action_runtime_map`
-  - Active mapping used by automations
-  - Published via MQTT to `event2action/map`
+The integration stores runtime maps, the blocking duration, and new session/step backups in `.storage/event2action.maps` using Home Assistant's versioned Store API. Runtime lookups use memory. Step snapshots and map edits are committed together. Session snapshots are captured when learning starts and on import. Connected cards receive updates through the integration WebSocket API, not state sensors.
 
-- **Session Backup**: `sensor.event2action_session_backup`
-  - Snapshot before learning session starts
-  - Published via MQTT to `event2action/session_backup`
-
-- **Step Backup**: `sensor.event2action_step_backup`
-  - Snapshot before each save operation
-  - Published via MQTT to `event2action/step_backup`
+Legacy session and step backups are not imported. New installations start with a 60-second duration, learning off, and no active block. JSON export contains only map entries, preserving the existing export format.
 
 ### Mapping Structure
 
@@ -344,7 +350,7 @@ default_block_seconds: 60
 
 ### Card Configuration YAML
 
-The following settings are user-facing card configuration options:
+The following settings are user-facing card configuration options. **Custom common service data keys** and **Prefill service data** are collapsible sections, initially collapsed. Their open/closed states are remembered independently in this browser and do not modify card YAML:
 
 ```yaml
 type: custom:event2action-learning-card
@@ -371,7 +377,7 @@ prefill_service_data:
   "*dimmer_control|script.turn_on": '{"light_entity":" ","steps":5,"bounce_at_top":false}'
 ```
 
-MQTT sensor names, MQTT topics, and helper entity names remain code-level constants because most users should keep the packaged Home Assistant entities aligned.
+No MQTT topics or helper entity names need configuring. Dashboard options remain separate from integration storage.
 
 ---
 
@@ -380,26 +386,26 @@ MQTT sensor names, MQTT topics, and helper entity names remain code-level consta
 ### Editor Doesn't Open When Button is Pressed
 
 - **Check Learning Mode**: Ensure learning mode toggle is ON
-- **Check Event Store**: Verify `input_text.event2action_last_event_store` is receiving data
+- **Check Connection**: Confirm the integration is configured and the card is connected as an administrator
 - **Check Event Source**: Ensure your event source is firing fresh `esphome.rf433` or `zha_event` events
 - **Check Timestamps**: Old events are ignored; press button again
 
-### Card Shows Package Setup Warning
+### Card Shows Integration Unavailable
 
-- **Install Package**: Copy `packages/event2action.yaml` to `/config/packages/event2action.yaml`
-- **Enable Packages**: Ensure `homeassistant: packages: !include_dir_named packages` is configured in `configuration.yaml`
-- **Restart Home Assistant**: A full restart is required after the first package install or package include change
-- **Check MQTT**: Ensure the MQTT integration is installed and available
+- Configure Event2Action under Settings → Devices & services.
+- Use an administrator account for editing and learning.
+- Remove old card resource references and reload the browser after setup.
+- Check Home Assistant logs if stored data cannot be loaded.
 
 ### Save Button Stays Disabled
 
 - **Make a Change**: Save is only enabled after modifying a field
-- **Check Required Fields**: Entity and Service must be selected (the editor can still save after an explicit confirmation)
+- **Check Required Fields**: Active entries require Entity and Service; disable an incomplete entry before saving
 
 ### Mapping Doesn't Work After Save
 
-- **Check Sensor Update**: Wait a few seconds for the MQTT sensor to refresh
-- **Check Automation**: Verify the Event2Action bus handler automation is active
+- **Check Save Result**: Saves are confirmed only after persistence; resolve any error shown in the card
+- **Check Runtime**: Verify the Event2Action integration is loaded and events are unblocked
 - **Check Entity**: Ensure the target entity exists and is accessible
 - **Check Service**: Verify the service is valid for the entity domain
 
@@ -519,8 +525,8 @@ The dimmer script itself is intentionally external to Event2Action.
 ha-event2action/
 ├── dist/
 │   └── event2action-learning-card.js  # Built Lovelace card loaded by HACS/Home Assistant
-├── packages/
-│   └── event2action.yaml              # Home Assistant package: helpers, MQTT sensors, scripts, automations
+├── custom_components/event2action/   # Runtime, HA Store, API, and bundled card
+├── legacy/event2action.yaml          # Old package reference; do not install with integration
 ├── migration/
 │   ├── migrate-v0.1.3-to-v0.2.0.js    # Standalone mapping migration utility
 │   └── README.md                       # Migration procedure and safety notes
@@ -528,11 +534,11 @@ ha-event2action/
 │   ├── e2a-learning-card.js           # Main learning card
 │   ├── e2a-editor.js                  # Mapping editor component
 │   ├── e2a-card-editor.js             # Lovelace card config editor
-│   ├── e2a-config.js                  # Default domains, topics, helpers, editor defaults
+│   ├── e2a-config.js                  # Default domains and editor options
 │   ├── mixins/                        # Shared card mixins
 │   ├── styles/                        # Shared Lit CSS modules
 │   └── utils/                         # Utility helpers
-├── hacs.json                          # HACS plugin metadata
+├── hacs.json                          # HACS/Marketplace integration metadata
 ├── QUICKSTART.md
 └── README.md
 ```
@@ -543,8 +549,7 @@ ha-event2action/
 
 - **Lit**: Web components library bundled into the built card
 - **Home Assistant**: Frontend components (`ha-button`, `ha-selector`, etc.)
-- **MQTT Integration**: For publishing mapping updates
-- **Event2Action Package**: Helper script, automations, MQTT sensors, and helper entities from `packages/event2action.yaml`
+- **Event2Action Integration**: Python runtime, local HA storage, and WebSocket API; no MQTT dependency
 
 ---
 

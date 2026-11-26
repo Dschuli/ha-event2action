@@ -24,18 +24,39 @@ class Event2ActionLearningCardEditor extends LitElement {
     _customCommonServiceDataKeysError: { state: true },
     _customCommonServiceFileStatus: { state: true },
     _prefillServiceDataError: { state: true },
-    _prefillServiceFileStatus: { state: true }
+    _prefillServiceFileStatus: { state: true },
+    _expandedSections: { state: true }
   };
 
   constructor() {
     super();
     this.config = {};
+    this._expandedSections = this._loadExpandedSections();
     this._customCommonServiceRows = this._customCommonServiceDataKeysToRows(DEFAULT_CONFIG.custom_common_service_data_keys);
     this._prefillServiceRows = this._prefillServiceDataToRows(DEFAULT_CONFIG.prefill_service_data);
     this._customCommonServiceDataKeysError = "";
     this._customCommonServiceFileStatus = "";
     this._prefillServiceDataError = "";
     this._prefillServiceFileStatus = "";
+  }
+
+  _loadExpandedSections() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("event2action.editor.sections") || "{}");
+      return {
+        common: saved?.common === true,
+        prefill: saved?.prefill === true
+      };
+    } catch (_) {
+      return { common: false, prefill: false };
+    }
+  }
+
+  _onSectionToggle(section, event) {
+    this._expandedSections = { ...this._expandedSections, [section]: event.currentTarget.open };
+    try {
+      localStorage.setItem("event2action.editor.sections", JSON.stringify(this._expandedSections));
+    } catch (_) { /* Collapsing still works when browser storage is unavailable. */ }
   }
 
   setConfig(config) {
@@ -683,28 +704,36 @@ class Event2ActionLearningCardEditor extends LitElement {
           <small>Entity domains shown by the target entity selector.</small>
         </label>
 
-        <div class="field">
-          <span>Custom common service data keys</span>
+        <details class="advanced-section"
+          ?open=${this._expandedSections.common}
+          @toggle=${event => this._onSectionToggle("common", event)}>
+          <summary>Custom common service data keys</summary>
+          <div class="section-content">
           ${this._renderCustomCommonServiceDataTable(this._customCommonServiceRows)}
           <small>Each block is one entity/service match. Entity and service support wildcards, for example <code>*dimmer_control</code> and <code>script.*</code>. Parameters must be a JSON array.</small>
           ${this._customCommonServiceDataKeysError
             ? html`<div class="error">${this._customCommonServiceDataKeysError}</div>`
             : null}
-        </div>
+          </div>
+        </details>
 
-        <div class="field">
-          <span>Prefill service data</span>
+        <details class="advanced-section"
+          ?open=${this._expandedSections.prefill}
+          @toggle=${event => this._onSectionToggle("prefill", event)}>
+          <summary>Prefill service data</summary>
+          <div class="section-content">
           ${this._renderPrefillServiceDataTable(this._prefillServiceRows)}
           <small>Each block is one entity/service match. Entity and service support wildcards. Prefill JSON must be an object and is stored in the config as the matching JSON string.</small>
           ${this._prefillServiceDataError
             ? html`<div class="error">${this._prefillServiceDataError}</div>`
             : null}
-        </div>
+          </div>
+        </details>
 
         <div class="field switch-row">
           <span>
             <span>Auto unblock</span>
-            <small>Unblock Event2Action automatically when leaving the card.</small>
+            <small>Unblock when the last Event2Action card closes, after a 3-second grace period for switching views.</small>
           </span>
           ${this._renderSwitch(
             config.auto_unblock !== false,
@@ -738,6 +767,28 @@ class Event2ActionLearningCardEditor extends LitElement {
     .field {
       display: grid;
       gap: 6px;
+    }
+
+    .advanced-section {
+      border: 1px solid var(--divider-color);
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .advanced-section > summary {
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .advanced-section > summary:focus-visible {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 4px;
+    }
+
+    .section-content {
+      display: grid;
+      gap: 6px;
+      margin-top: 12px;
     }
 
     .field > span,

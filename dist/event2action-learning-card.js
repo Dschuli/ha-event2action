@@ -803,14 +803,6 @@ const PREFILL_SERVICE_DATA = {
 const AUTO_UNBLOCK = true;
 const DEFAULT_BLOCK_SECONDS = 60;
 const LOG_LEVEL = 2;
-const RUNTIME_MAPPING_SENSOR = "sensor.event2action_runtime_map";
-const RUNTIME_MAPPING_TOPIC = "event2action/map";
-const SESSION_BACKUP_SENSOR = "sensor.event2action_session_backup";
-const SESSION_BACKUP_TOPIC = "event2action/session_backup";
-const STEP_BACKUP_SENSOR = "sensor.event2action_step_backup";
-const STEP_BACKUP_TOPIC = "event2action/step_backup";
-const LASTEVENT_STORE = "input_text.event2action_last_event_store";
-const BLOCKING_HELPER = "input_boolean.event2action_block_events";
 let activeLogLevel = LOG_LEVEL;
 function setLogLevel(level) {
   const nextLevel = Number(level);
@@ -1869,12 +1861,31 @@ class Event2ActionLearningCardEditor extends s {
   constructor() {
     super();
     this.config = {};
+    this._expandedSections = this._loadExpandedSections();
     this._customCommonServiceRows = this._customCommonServiceDataKeysToRows(DEFAULT_CONFIG.custom_common_service_data_keys);
     this._prefillServiceRows = this._prefillServiceDataToRows(DEFAULT_CONFIG.prefill_service_data);
     this._customCommonServiceDataKeysError = "";
     this._customCommonServiceFileStatus = "";
     this._prefillServiceDataError = "";
     this._prefillServiceFileStatus = "";
+  }
+  _loadExpandedSections() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("event2action.editor.sections") || "{}");
+      return {
+        common: (saved == null ? void 0 : saved.common) === true,
+        prefill: (saved == null ? void 0 : saved.prefill) === true
+      };
+    } catch (_2) {
+      return { common: false, prefill: false };
+    }
+  }
+  _onSectionToggle(section, event) {
+    this._expandedSections = { ...this._expandedSections, [section]: event.currentTarget.open };
+    try {
+      localStorage.setItem("event2action.editor.sections", JSON.stringify(this._expandedSections));
+    } catch (_2) {
+    }
   }
   setConfig(config) {
     this.config = {
@@ -2429,24 +2440,32 @@ class Event2ActionLearningCardEditor extends s {
           <small>Entity domains shown by the target entity selector.</small>
         </label>
 
-        <div class="field">
-          <span>Custom common service data keys</span>
+        <details class="advanced-section"
+          ?open=${this._expandedSections.common}
+          @toggle=${(event) => this._onSectionToggle("common", event)}>
+          <summary>Custom common service data keys</summary>
+          <div class="section-content">
           ${this._renderCustomCommonServiceDataTable(this._customCommonServiceRows)}
           <small>Each block is one entity/service match. Entity and service support wildcards, for example <code>*dimmer_control</code> and <code>script.*</code>. Parameters must be a JSON array.</small>
           ${this._customCommonServiceDataKeysError ? x`<div class="error">${this._customCommonServiceDataKeysError}</div>` : null}
-        </div>
+          </div>
+        </details>
 
-        <div class="field">
-          <span>Prefill service data</span>
+        <details class="advanced-section"
+          ?open=${this._expandedSections.prefill}
+          @toggle=${(event) => this._onSectionToggle("prefill", event)}>
+          <summary>Prefill service data</summary>
+          <div class="section-content">
           ${this._renderPrefillServiceDataTable(this._prefillServiceRows)}
           <small>Each block is one entity/service match. Entity and service support wildcards. Prefill JSON must be an object and is stored in the config as the matching JSON string.</small>
           ${this._prefillServiceDataError ? x`<div class="error">${this._prefillServiceDataError}</div>` : null}
-        </div>
+          </div>
+        </details>
 
         <div class="field switch-row">
           <span>
             <span>Auto unblock</span>
-            <small>Unblock Event2Action automatically when leaving the card.</small>
+            <small>Unblock when the last Event2Action card closes, after a 3-second grace period for switching views.</small>
           </span>
           ${this._renderSwitch(
       config.auto_unblock !== false,
@@ -2479,7 +2498,8 @@ __publicField(Event2ActionLearningCardEditor, "properties", {
   _customCommonServiceDataKeysError: { state: true },
   _customCommonServiceFileStatus: { state: true },
   _prefillServiceDataError: { state: true },
-  _prefillServiceFileStatus: { state: true }
+  _prefillServiceFileStatus: { state: true },
+  _expandedSections: { state: true }
 });
 __publicField(Event2ActionLearningCardEditor, "styles", i$1`
     .editor {
@@ -2490,6 +2510,28 @@ __publicField(Event2ActionLearningCardEditor, "styles", i$1`
     .field {
       display: grid;
       gap: 6px;
+    }
+
+    .advanced-section {
+      border: 1px solid var(--divider-color);
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .advanced-section > summary {
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .advanced-section > summary:focus-visible {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 4px;
+    }
+
+    .section-content {
+      display: grid;
+      gap: 6px;
+      margin-top: 12px;
     }
 
     .field > span,
@@ -2631,17 +2673,73 @@ __publicField(Event2ActionLearningCardEditor, "styles", i$1`
 if (!customElements.get("event2action-learning-card-editor")) {
   customElements.define("event2action-learning-card-editor", Event2ActionLearningCardEditor);
 }
+class Event2ActionPanel extends s {
+  firstUpdated() {
+    this._configureCard();
+  }
+  updated(changedProps) {
+    if (changedProps.has("panel"))
+      this._configureCard();
+  }
+  _configureCard() {
+    var _a2, _b, _c;
+    (_c = this.renderRoot.querySelector("event2action-learning-card")) == null ? void 0 : _c.setConfig({
+      type: "custom:event2action-learning-card",
+      ...((_b = (_a2 = this.panel) == null ? void 0 : _a2.config) == null ? void 0 : _b.card_config) || {}
+    });
+  }
+  render() {
+    return x`
+      <header>
+        <ha-menu-button .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>
+        <h1>Event2Action</h1>
+      </header>
+      <main>
+        <event2action-learning-card .hass=${this.hass}></event2action-learning-card>
+      </main>
+    `;
+  }
+}
+__publicField(Event2ActionPanel, "properties", {
+  hass: { attribute: false },
+  narrow: { type: Boolean },
+  panel: { attribute: false }
+});
+__publicField(Event2ActionPanel, "styles", i$1`
+    :host {
+      display: block;
+      height: 100%;
+      overflow: auto;
+      color: var(--primary-text-color);
+      background: var(--primary-background-color);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      min-height: 56px;
+      padding: 0 16px 0 4px;
+      color: var(--app-header-text-color, var(--primary-text-color));
+      background: var(--app-header-background-color, var(--card-background-color));
+    }
+    h1 { font-size: 20px; font-weight: 400; margin: 0 12px; }
+    main { padding: 16px; box-sizing: border-box; min-width: 0; }
+    event2action-learning-card { display: block; min-width: 0; }
+  `);
+if (!customElements.get("event2action-panel")) {
+  customElements.define("event2action-panel", Event2ActionPanel);
+}
 const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   constructor() {
     super();
-    this._runtime_mapping_sensor = RUNTIME_MAPPING_SENSOR;
-    this._runtime_mapping_topic = RUNTIME_MAPPING_TOPIC;
-    this._session_backup_sensor = SESSION_BACKUP_SENSOR;
-    this._session_backup_topic = SESSION_BACKUP_TOPIC;
-    this._step_backup_sensor = STEP_BACKUP_SENSOR;
-    this._step_backup_topic = STEP_BACKUP_TOPIC;
-    this._lastevent_store = LASTEVENT_STORE;
-    this._blocking_helper = BLOCKING_HELPER;
+    this._records = {};
+    this._revision = null;
+    this._backendError = "Connecting to Event2Action\u2026";
+    this._unsubscribeBackend = null;
+    this._backendConnection = null;
+    this._connectingBackend = false;
+    this._backendGeneration = 0;
+    this._lastEvent = null;
+    this._blockedUntil = 0;
     this._blockSeconds = DEFAULT_BLOCK_SECONDS;
     this._entityDomainList = ENTITY_DOMAIN_LIST;
     this._customCommonServiceDataKeys = CUSTOM_COMMON_SERVICE_DATA_KEYS;
@@ -2658,7 +2756,6 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     this._prevStoreState = null;
     this._busy = false;
     this._undoDisabled = false;
-    this._publishSeq = 0;
     this._resetLastEventData();
     this._blockCounter = 0;
     this._blockCounterInterval = null;
@@ -2694,6 +2791,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     if (configuredBlockSeconds !== null && configuredBlockSeconds > 0) {
       this._blockSeconds = configuredBlockSeconds;
     }
+    this._connectBackend();
   }
   static getConfigElement() {
     return document.createElement("event2action-learning-card-editor");
@@ -2737,155 +2835,127 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     return Number.isFinite(numberValue) ? numberValue : fallback;
   }
   _getRuntimeMappingEntity() {
-    return this._runtime_mapping_sensor;
-  }
-  _getRuntimeMappingTopic() {
-    return this._runtime_mapping_topic;
+    return "runtime";
   }
   _getSessionBackupEntity() {
-    return this._session_backup_sensor;
-  }
-  _getSessionBackupTopic() {
-    return this._session_backup_topic;
+    return "session_backup";
   }
   _getStepBackupEntity() {
-    return this._step_backup_sensor;
+    return "step_backup";
   }
-  _getStepBackupTopic() {
-    return this._step_backup_topic;
+  async _connectBackend() {
+    var _a2;
+    if (!this.isConnected || !((_a2 = this.hass) == null ? void 0 : _a2.connection) || this._connectingBackend)
+      return;
+    if (this._backendConnection === this.hass.connection && this._subscribedAutoUnblock === this._autoUnblock)
+      return;
+    const generation = ++this._backendGeneration;
+    this._connectingBackend = true;
+    const connection = this.hass.connection;
+    this._backendConnection = connection;
+    this._subscribedAutoUnblock = this._autoUnblock;
+    try {
+      if (this._unsubscribeBackend)
+        this._unsubscribeBackend();
+      this._unsubscribeBackend = null;
+      const unsubscribe = await connection.subscribeMessage(
+        (data) => {
+          if (generation === this._backendGeneration)
+            this._applyBackend(data);
+        },
+        { type: "event2action/subscribe", auto_unblock: this._autoUnblock }
+      );
+      if (!this.isConnected || generation !== this._backendGeneration) {
+        unsubscribe();
+        return;
+      }
+      this._backendConnection = connection;
+      this._unsubscribeBackend = unsubscribe;
+    } catch (err) {
+      this._backendError = err.message || "Set up the Event2Action integration, then reload this page.";
+      this.requestUpdate();
+    } finally {
+      this._connectingBackend = false;
+      if (this.isConnected && (generation !== this._backendGeneration || this._subscribedAutoUnblock !== this._autoUnblock))
+        this._connectBackend();
+    }
   }
-  _getLastEventStoreEntity() {
-    return this._lastevent_store;
-  }
-  _getBlockingHelperEntity() {
-    return this._blocking_helper;
-  }
-  async connectedCallback() {
-    super.connectedCallback();
-    logger.debug("E2ALearningCard: connectedCallback called");
+  _applyBackend(data) {
+    var _a2;
+    const wasLearning = this._learningMode;
+    const sessionChanged = data.learning_mode === true && this._learningStartedAt !== data.learning_started_at;
+    if (typeof data.learning_mode === "boolean")
+      this._learningStartedAt = data.learning_started_at;
+    if (typeof data.learning_mode === "boolean")
+      this._learningMode = data.learning_mode;
+    if (data.storage && (this._revision === null || data.storage.revision >= this._revision)) {
+      this._revision = data.storage.revision;
+      this._records = Object.fromEntries(Object.entries(data.storage).filter(([key, value]) => key !== "revision" && value).map(([key, value]) => [key, { attributes: value, last_updated: value.last_updated }]));
+      this._syncBlockSecondsFromRuntimeSettings();
+    }
+    if (wasLearning !== this._learningMode || sessionChanged) {
+      this._lockedPcc = null;
+      this._lastHandledEventTs = this._learningMode ? new Date(data.learning_started_at).getTime() : 0;
+    }
+    if (data.storage || wasLearning !== this._learningMode || sessionChanged) {
+      if (this._learningMode) {
+        this._undoLabel = "Undo last save";
+        this._undoDisabled = !this._records.step_backup || this._revision <= data.learning_revision || this._compare_mapping_states("step_backup", "runtime");
+        this._undoHint = this._undoDisabled ? "No saved mapping changes yet in this learning session." : "Restores the mapping to the state before the last save.";
+      } else {
+        this._undoLabel = "Undo last session";
+        this._setSessionBackupHint();
+      }
+    }
+    this._lastEvent = data.last_event;
+    const remaining = Math.max(0, (data.blocked_until || 0) - ((_a2 = data.server_time) != null ? _a2 : Date.now() / 1e3));
+    this._blockedUntil = remaining ? performance.now() / 1e3 + remaining : 0;
+    this._blockCounter = Math.ceil(remaining);
+    this._backendError = null;
     this.setLastEventData();
-    this._setSessionBackupHint();
-    if (this._autoUnblock && this.hass) {
-      try {
-        const savedBlock = localStorage.getItem("e2a_block_time");
-        logger.debug("E2ALearningCard: Restoring block time from localStorage:", savedBlock);
-        if (savedBlock) {
-          const seconds = parseInt(savedBlock, 10);
-          if (seconds > 0) {
-            this.blockEvents(seconds);
-            logger.debug(`E2ALearningCard: Restored and re-blocked for ${seconds} seconds from localStorage`);
-          }
-          localStorage.removeItem("e2a_block_time");
-        }
-      } catch (e2) {
-        logger.warn("E2ALearningCard: Failed to restore block time from localStorage", e2);
-      }
+    if (this._learningMode && !this._lockedPcc && this._hasValidLastData && this._lastTs > this._lastHandledEventTs) {
+      this._start_EditMode(this._lastProto, this._lastCode, this._lastPressed);
     }
-    const savedLearning = localStorage.getItem("e2a_learning_mode");
-    if (savedLearning !== null) {
-      this._learningMode = savedLearning === "true";
-      logger.debug("E2ALearningCard: Restored learning mode from localStorage:", this._learningMode);
+    this.requestUpdate();
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    try {
+      localStorage.removeItem("e2a_learning_mode");
+      localStorage.removeItem("e2a_block_time");
+    } catch (_2) {
     }
-    this._onBeforeUnload = () => {
-      if (this._autoUnblock) {
-        this.unBlockEvents();
-        logger.debug("E2ALearningCard: unblocking due to page unload");
-      }
-    };
-    window.addEventListener("beforeunload", this._onBeforeUnload);
-    this._unhandledRejectionHandler = (event) => {
-      var _a2, _b, _c, _d, _e, _f, _g, _h;
-      if (((_b = (_a2 = event.reason) == null ? void 0 : _a2.error) == null ? void 0 : _b.code) === "not_found" && ((_c = event.reason) == null ? void 0 : _c.type) === "result" && !((_d = event.reason) == null ? void 0 : _d.success)) {
-        event.preventDefault();
-      } else if (((_f = (_e = event.reason) == null ? void 0 : _e.error) == null ? void 0 : _f.code) === 3 && ((_h = (_g = event.reason) == null ? void 0 : _g.error) == null ? void 0 : _h.message) === "Connection lost") {
-        logger.warn("WebSocket connection lost. Ignoring to prevent page crash.");
-        event.preventDefault();
-      }
-    };
-    window.addEventListener("unhandledrejection", this._unhandledRejectionHandler);
+    this._blockCounterInterval = setInterval(() => {
+      this._blockCounter = Math.max(0, Math.ceil(this._blockedUntil - performance.now() / 1e3));
+      this.requestUpdate();
+    }, 1e3);
+    this._connectBackend();
   }
   disconnectedCallback() {
-    var _a2;
+    this._backendGeneration++;
+    if (this._unsubscribeBackend)
+      this._unsubscribeBackend();
+    this._unsubscribeBackend = null;
+    this._backendConnection = null;
+    clearInterval(this._blockCounterInterval);
     super.disconnectedCallback();
-    logger.debug("E2ALearningCard: disconnectedCallback called");
-    if (this._unhandledRejectionHandler) {
-      window.removeEventListener("unhandledrejection", this._unhandledRejectionHandler);
-    }
-    try {
-      localStorage.setItem("e2a_learning_mode", this._learningMode ? "true" : "false");
-      logger.debug("E2ALearningCard: Saved learning mode to localStorage:", this._learningMode);
-    } catch (e2) {
-      logger.warn("E2ALearningCard: Failed to save learning mode to localStorage", e2);
-    }
-    if (this._autoUnblock) {
-      if (this.hass && ((_a2 = this.hass.states[this._getBlockingHelperEntity()]) == null ? void 0 : _a2.state) === "on") {
-        try {
-          localStorage.setItem("e2a_block_time", String(this._blockCounter));
-        } catch (e2) {
-          logger.warn("E2ALearningCard: Failed to save block time to localStorage", e2);
-        }
-      } else {
-        try {
-          localStorage.removeItem("e2a_block_time");
-        } catch (e2) {
-        }
-      }
-      this.unBlockEvents();
-      logger.debug("E2ALearningCard: unblocking due to disconnect");
-    }
-    if (this._blockCounterInterval) {
-      clearInterval(this._blockCounterInterval);
-      this._blockCounterInterval = null;
-    }
   }
   updated(changedProps) {
-    if (changedProps.has("_learningMode")) {
-      try {
-        localStorage.setItem("e2a_learning_mode", this._learningMode ? "true" : "false");
-        logger.debug("E2ALearningCard: Learning mode changed, saved to localStorage:", this._learningMode);
-      } catch (e2) {
-        logger.warn("E2ALearningCard: Failed to save learning mode to localStorage", e2);
-      }
-    }
-    if (!changedProps.has("hass"))
-      return;
-    this._syncBlockSecondsFromRuntimeSettings();
-    this.setLastEventData();
-    if (!this._hasValidLastData)
-      return;
-    if (!this._learningMode)
-      return;
-    if (!!this._lockedPcc)
-      return;
-    if (this._lastTs <= this._lastHandledEventTs)
-      return;
-    this._start_EditMode(this._lastProto, this._lastCode, this._lastPressed);
+    if (changedProps.has("hass"))
+      this._connectBackend();
   }
   setLastEventData() {
-    var _a2;
-    const store = this.hass.states[this._getLastEventStoreEntity()];
-    const storeState = (_a2 = store == null ? void 0 : store.state) != null ? _a2 : null;
-    if (storeState !== this._prevStoreState) {
-      logger.info("E2ALearningCard: Detected change in RF event store");
-      this._prevStoreState = storeState;
-      if (!storeState || storeState === "unknown" || storeState === "unavailable") {
-        this._resetLastEventData();
-      } else {
-        try {
-          const data = JSON.parse(storeState);
-          this._lastDeviceIeee = data.device_ieee || "";
-          this._lastProto = data.proto;
-          this._lastCode = data.code;
-          this._lastPressed = data.command || data.pressed || "";
-          this._lastTs = new Date(data.ts).getTime();
-          this._hasValidLastData = this._lastProto != null && this._lastCode != null && this._lastTs != null;
-          logger.debug("E2ALearningCard: last RF event =", this._lastProto, this._lastCode, this._lastPressed, this._lastTs);
-        } catch (e2) {
-          logger.error("E2ALearningCard: Failed to parse RF event store data", e2);
-          this._resetLastEventData();
-        }
-      }
+    const data = this._lastEvent;
+    if (!data) {
+      this._resetLastEventData();
+      return;
     }
+    this._lastDeviceIeee = data.device_ieee || "";
+    this._lastProto = data.proto;
+    this._lastCode = data.code;
+    this._lastPressed = data.command || "";
+    this._lastTs = new Date(data.ts).getTime();
+    this._hasValidLastData = data.proto != null && data.code != null && Number.isFinite(this._lastTs);
   }
   _resetLastEventData() {
     this._hasValidLastData = false;
@@ -2895,11 +2965,11 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     this._lastPressed = null;
     this._lastTs = null;
   }
-  _get_mapping_data(sensor_entity) {
+  _get_mapping_data(slot) {
     var _a2, _b;
-    const stateObj = this.hass.states[sensor_entity];
+    const stateObj = this._records[slot];
     if (!stateObj) {
-      logger.warn("E2ALearningCard: mapping state object not found");
+      logger.warn("E2ALearningCard: storage record not found");
       return { lastupdated: 0, map: [], settings: {} };
     }
     const lastupdated = stateObj.last_updated;
@@ -2913,28 +2983,16 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
   }
   _syncBlockSecondsFromRuntimeSettings() {
-    var _a2, _b, _c;
-    const settings = (_c = (_b = (_a2 = this.hass) == null ? void 0 : _a2.states[this._getRuntimeMappingEntity()]) == null ? void 0 : _b.attributes) == null ? void 0 : _c.settings;
+    var _a2, _b;
+    const settings = (_b = (_a2 = this._records[this._getRuntimeMappingEntity()]) == null ? void 0 : _a2.attributes) == null ? void 0 : _b.settings;
     const seconds = this._getBlockSecondsFromSettings(settings);
     if (seconds !== null && seconds !== this._blockSeconds) {
       this._blockSeconds = seconds;
     }
   }
-  _getSettingsForPublish(sensor_entity, overrides = {}) {
-    var _a2, _b;
-    const existing = ((_b = (_a2 = this.hass.states[sensor_entity]) == null ? void 0 : _a2.attributes) == null ? void 0 : _b.settings) || {};
-    const settings = {
-      ...existing,
-      ...overrides
-    };
-    if (this._getBlockSecondsFromSettings(settings) === null) {
-      settings.block_seconds = this._blockSeconds || DEFAULT_BLOCK_SECONDS;
-    }
-    return settings;
-  }
-  _compare_mapping_states(sensor_entity1, sensor_entity2) {
+  _compare_mapping_states(firstSlot, secondSlot) {
     var _a2, _b, _c, _d;
-    return JSON.stringify((_b = (_a2 = this.hass.states[sensor_entity1]) == null ? void 0 : _a2.attributes) == null ? void 0 : _b.map) === JSON.stringify((_d = (_c = this.hass.states[sensor_entity2]) == null ? void 0 : _c.attributes) == null ? void 0 : _d.map);
+    return JSON.stringify((_b = (_a2 = this._records[firstSlot]) == null ? void 0 : _a2.attributes) == null ? void 0 : _b.map) === JSON.stringify((_d = (_c = this._records[secondSlot]) == null ? void 0 : _c.attributes) == null ? void 0 : _d.map);
   }
   _isDirty() {
     return JSON.stringify(this._draft) !== JSON.stringify(this._original);
@@ -2953,9 +3011,10 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
       return null;
     const p2 = String(proto);
     const c2 = String(code);
-    return map.find(
+    const matches = map.filter(
       (e2) => String(e2.proto) === p2 && String(e2.code) === c2
-    ) || null;
+    );
+    return matches.find((e2) => e2.active === true) || matches[0] || null;
   }
   _setBusy(active, label) {
     this._busy = active;
@@ -2965,7 +3024,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   }
   _setSessionBackupHint() {
     var _a2;
-    const lastupdated = (_a2 = this.hass.states[this._getSessionBackupEntity()]) == null ? void 0 : _a2.last_updated;
+    const lastupdated = (_a2 = this._records[this._getSessionBackupEntity()]) == null ? void 0 : _a2.last_updated;
     if (lastupdated) {
       if (this._compare_mapping_states(this._getSessionBackupEntity(), this._getRuntimeMappingEntity())) {
         this._undoDisabled = true;
@@ -2980,160 +3039,24 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     }
   }
   _getSetupIssues() {
-    var _a2, _b, _c, _d;
-    if (!this.hass)
-      return [];
-    const requiredEntities = [
-      this._getRuntimeMappingEntity(),
-      this._getSessionBackupEntity(),
-      this._getStepBackupEntity(),
-      this._getLastEventStoreEntity(),
-      this._getBlockingHelperEntity()
-    ];
-    const missingEntities = requiredEntities.filter((entityId) => !this.hass.states[entityId]);
-    const missingServices = [];
-    if (!((_b = (_a2 = this.hass.services) == null ? void 0 : _a2.mqtt) == null ? void 0 : _b.publish)) {
-      missingServices.push("mqtt.publish");
-    }
-    if (!((_d = (_c = this.hass.services) == null ? void 0 : _c.script) == null ? void 0 : _d.temporary_toggle)) {
-      missingServices.push("script.temporary_toggle");
-    }
-    const issues = [];
-    if (missingEntities.length) {
-      issues.push({
-        title: "Missing required Event2Action entities",
-        items: missingEntities
-      });
-    }
-    if (missingServices.length) {
-      issues.push({
-        title: "Missing required Home Assistant services",
-        items: missingServices
-      });
-    }
-    return issues;
+    return this._backendError || this._revision === null ? [{ title: "Event2Action integration unavailable", items: [this._backendError || "Connecting\u2026"] }] : [];
   }
   _renderSetupIssues(issues) {
-    if (!issues.length)
-      return null;
-    return x`
-      <ha-card header="Event2Action Learning">
-        <div class="content">
-          <div class="setup-alert">
-            <h3>Event2Action package setup is incomplete</h3>
-            <p>
-              The card is installed, but the Home Assistant package entities or services are not available yet.
-              This usually means <code>packages/event2action.yaml</code> has not been installed under
-              <code>/config/packages/</code>, <code>packages: !include_dir_named packages</code> is missing from
-              <code>configuration.yaml</code>, or Home Assistant has not been restarted/reloaded after setup.
-            </p>
-
-            ${issues.map((issue) => x`
-              <p><b>${issue.title}</b></p>
-              <ul>
-                ${issue.items.map((item) => x`<li><code>${item}</code></li>`)}
-              </ul>
-            `)}
-
-            <p>
-              Install the package file, enable package loading in <code>configuration.yaml</code> if needed,
-              then restart or reload Home Assistant. See <code>QUICKSTART.md</code> for the complete setup steps.
-            </p>
-          </div>
-        </div>
-      </ha-card>
-      ${this.renderBusyOverlay()}
-    `;
+    return x`<ha-card header="Event2Action"><div class="content">
+      ${issues.map((issue) => x`<p>${issue.title}</p>${issue.items.map((item) => x`<p>${item}</p>`)}`)}
+      <p>Set up Event2Action under Settings → Devices &amp; services. Reload this page after setup.</p>
+    </div></ha-card>`;
   }
-  async _waitForSensorUpdate(entityId, sinceTs, timeoutMs = 5e3, intervalMs = 200) {
-    logger.debug(`E2ALearningCard: waiting for ${entityId} to update since ${new Date(sinceTs).toISOString()}`);
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      const st = this.hass.states[entityId];
-      if (!st)
-        return false;
-      const updated = new Date(st.last_updated).getTime();
-      logger.debug(`E2ALearningCard: checking ${entityId}, last updated at ${new Date(updated).toISOString()}`);
-      if (updated > sinceTs) {
-        return true;
-      }
-      await new Promise((r2) => setTimeout(r2, intervalMs));
-    }
-    return false;
-  }
-  async _publish_map(sensor, topic, map, settings = null) {
-    var _a2, _b;
-    const publishStamp = `${Date.now()}-${++this._publishSeq}`;
-    const payload = {
-      state: `loaded_${publishStamp}`,
-      settings: settings != null ? settings : this._getSettingsForPublish(sensor),
-      map
-    };
-    logger.debug("E2ALearningCard: publishing payload to", topic, payload);
-    const beforeTs = new Date((_b = (_a2 = this.hass.states[sensor]) == null ? void 0 : _a2.last_updated) != null ? _b : 0).getTime();
-    try {
-      await this.hass.callService("mqtt", "publish", {
-        topic,
-        payload: JSON.stringify(payload),
-        retain: true
-      });
-    } catch (err) {
-      logger.error("Failed to publish MQTT message:", err);
-      throw new Error(`Connection lost while publishing to ${topic}. Please check your Home Assistant connection.`);
-    }
-    const ok = await this._waitForSensorUpdate(sensor, beforeTs);
-    if (!ok) {
-      throw new Error(sensor + " did not update (timeout)");
-    }
-    logger.info(sensor + " updated successfully");
-  }
-  async _createBackupIfNeeded(type, doDelete = false) {
-    var _a2;
-    if (type !== "step" && type !== "session") {
-      throw new Error("Invalid backup type: " + type);
-    }
-    const backup_sensor = type === "step" ? this._getStepBackupEntity() : this._getSessionBackupEntity();
-    const backup_topic = type === "step" ? this._getStepBackupTopic() : this._getSessionBackupTopic();
-    const typeText = type === "step" ? "last save" : "last session";
-    if (this._compare_mapping_states(backup_sensor, this._getRuntimeMappingEntity())) {
-      return true;
-    }
-    logger.info("E2A: creating " + type + " backup");
-    this._setBusy(true, "Creating " + type + " backup\u2026");
-    const { map, settings } = this._get_mapping_data(this._getRuntimeMappingEntity());
-    if (map.length === 0 || doDelete && map.length === 1) {
-      logger.warn("E2A: current mapping is empty");
-      const ok = await confirm("Current mapping is empty.\n\nDo you want to skip backup of empty mapping?", { yes: "Proceed", no: "Cancel" });
-      this._setBusy(false);
-      if (!ok)
-        return true;
-    }
-    try {
-      await this._publish_map(
-        backup_sensor,
-        backup_topic,
-        map,
-        settings
-      );
-      logger.info("E2A: " + type + " backup created");
-      const lastupdated = (_a2 = this.hass.states[this._getRuntimeMappingEntity()]) == null ? void 0 : _a2.last_updated;
-      this._undoDisabled = false;
-      this._undoLabel = "Undo " + typeText;
-      this._undoHint = "Restores the mapping to the state before the " + typeText + ", dated " + formatDateTime(this.hass, new Date(lastupdated));
-      return true;
-    } catch (err) {
-      logger.error("E2A: failed to create " + type + " backup", err);
-      const ok = await confirm(
-        "Failed to create " + type + " backup.\nCheck Home Assistant logs for details." + (type === "step" ? "\nDo you want to proceed with saving the mapping anyway?" : ""),
-        { yes: type === "step" ? "Proceed" : "Ok", no: type === "step" ? "Cancel" : "" }
-      );
-      this._setBusy(false);
-      if (type === "step")
-        return ok;
-      return false;
-    } finally {
-      this._setBusy(false);
-    }
+  async _save_map(slot, map, settings = null, captureSession = false) {
+    const result = await this.hass.callWS({
+      type: "event2action/save",
+      slot,
+      map,
+      revision: this._revision,
+      capture_session: captureSession,
+      ...settings === null ? {} : { settings }
+    });
+    this._applyBackend(result);
   }
   _build_new_map(oldMap, newMap) {
     logger.debug("E2ALearningCard: Building new map", newMap, oldMap);
@@ -3186,24 +3109,16 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     return result;
   }
   async toggleLearningMode(e2) {
-    logger.info("E2ALearningCard: toggling learning mode to", e2.target.checked);
     if (!this.hass)
       return;
-    this._undoDisabled = true;
-    this._learningMode = e2.target.checked;
-    this.dispatchEvent(new CustomEvent("learning-mode-changed"));
-    if (this._learningMode) {
-      this._lastHandledEventTs = this._lastTs;
-      this._lockedPcc = null;
-      this._undoDisabled = true;
-      this._undoLabel = "Undo last save";
-      this._undoHint = "No saved mapping changes yet in this learning session.";
-      await this._createBackupIfNeeded("session");
-    } else {
-      this._lastHandledEventTs = 0;
-      this._lockedPcc = null;
-      this._undoLabel = "Undo last session";
-      this._setSessionBackupHint();
+    try {
+      this._applyBackend(await this.hass.callWS({
+        type: "event2action/learning",
+        enabled: e2.target.checked
+      }));
+    } catch (err) {
+      e2.target.checked = this._learningMode;
+      await confirm(err.message || "Could not change learning mode.", { yes: "Ok", no: "" });
     }
   }
   _start_EditMode(proto, code, command) {
@@ -3211,7 +3126,7 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     logger.info("E2ALearningCard: starting editor for ", proto, code);
     this._lockedPcc = { proto, code };
     this._editorStartedAt = Date.now();
-    const stateObj = this.hass.states[this._getRuntimeMappingEntity()];
+    const stateObj = this._records[this._getRuntimeMappingEntity()];
     logger.debug("E2ALearningCard: map stateObj =", stateObj);
     if (!stateObj)
       return;
@@ -3244,64 +3159,23 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
     this._draft = { ...this._draft, name: e2.target.value };
   }
   async blockEvents(seconds) {
-    logger.debug("E2ALearningCard: blockEvents called with", seconds);
-    if (!this.hass || !seconds || seconds <= 0)
-      return;
-    logger.info(`E2ALearningCard: Blocking RF events for ${seconds} seconds`);
-    this._blockCounter = seconds;
-    if (this._blockCounterInterval)
-      clearInterval(this._blockCounterInterval);
-    this._blockCounterInterval = setInterval(() => {
-      if (this._blockCounter > 0) {
-        this._blockCounter--;
-        this.requestUpdate();
-      } else {
-        clearInterval(this._blockCounterInterval);
-        this._blockCounterInterval = null;
-        this.requestUpdate();
-      }
-    }, 1e3);
-    this.requestUpdate();
     try {
-      await this.hass.callService("script", "temporary_toggle", {
-        toggle: this._getBlockingHelperEntity(),
-        seconds,
-        status: "on"
-      });
+      this._applyBackend(await this.hass.callWS({ type: "event2action/block", seconds }));
     } catch (err) {
-      logger.error("Failed to block events:", err);
+      await confirm(err.message || "Could not block events.", { yes: "Ok", no: "" });
     }
   }
   async unBlockEvents() {
-    logger.debug("E2ALearningCard: unBlockEvents called");
-    if (!this.hass)
-      return;
-    try {
-      await this.hass.callService("script", "temporary_toggle", {
-        toggle: this._getBlockingHelperEntity(),
-        status: "off",
-        seconds: 0
-      });
-    } catch (err) {
-      logger.error("Failed to unblock events:", err);
-    }
-    this._blockCounter = 0;
-    if (this._blockCounterInterval) {
-      clearInterval(this._blockCounterInterval);
-      this._blockCounterInterval = null;
-    }
-    this.requestUpdate();
+    this._applyBackend(await this.hass.callWS({ type: "event2action/block", seconds: 0 }));
   }
   async _saveBlockSeconds(seconds) {
     const blockSeconds = Number(seconds);
     if (!Number.isFinite(blockSeconds) || blockSeconds <= 0)
       return;
-    this._blockSeconds = blockSeconds;
     const { map, settings } = this._get_mapping_data(this._getRuntimeMappingEntity());
     try {
-      await this._publish_map(
+      await this._save_map(
         this._getRuntimeMappingEntity(),
-        this._getRuntimeMappingTopic(),
         map,
         {
           ...settings,
@@ -3351,26 +3225,24 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
         const ok = await confirm(
           `Import ${importedMap.length} mapping(s) from file?
 
-This will replace the current mapping.`,
+This replaces the current map. Legacy session and step backups are not imported. A new installation starts with a 60-second blocking duration. Keep your original export.`,
           { yes: "Import", no: "Cancel" }
         );
         if (!ok)
           return;
-        const backupOk = await this._createBackupIfNeeded("session");
-        if (!backupOk)
-          return;
         this._setBusy(true, "Importing map\u2026");
         try {
-          await this._publish_map(
+          await this._save_map(
             this._getRuntimeMappingEntity(),
-            this._getRuntimeMappingTopic(),
-            importedMap
+            importedMap,
+            null,
+            true
           );
           await confirm("Map imported successfully.", { yes: "Ok", no: "" });
         } catch (err) {
           logger.error("E2A: failed to import map", err);
           await confirm(
-            "Failed to import mapping.\nCheck Home Assistant logs for details.",
+            err.message || "Failed to import mapping.",
             { yes: "Ok", no: "" }
           );
         } finally {
@@ -3410,8 +3282,8 @@ This will replace the current mapping.`,
       delete normalizedDraft.name;
     this._draft = normalizedDraft;
     if (!this._draft.entity || !this._draft.service) {
-      const ok = await confirm("Entity and Service fields are required.\nDo you want to save this record anyway?", { yes: "Yes", no: "Cancel" });
-      if (!ok)
+      await confirm("Entity and Service fields are required for an active mapping. Disable the mapping to save an incomplete record.", { yes: "Ok", no: "" });
+      if (this._draft.active)
         return;
     }
     this._saveMap(false);
@@ -3427,11 +3299,11 @@ This will replace the current mapping.`,
     this._saveMap(true);
   }
   async _saveMap(doDelete = false) {
-    var _a2;
+    var _a2, _b;
     logger.info("E2ALearningCard: Saving edited mapping", doDelete);
     if (!this._lockedPcc)
       return;
-    const stateObj = this.hass.states[this._getRuntimeMappingEntity()];
+    const stateObj = this._records[this._getRuntimeMappingEntity()];
     if (!stateObj)
       return;
     const lastUpdated = new Date(stateObj.last_updated).getTime();
@@ -3440,26 +3312,23 @@ This will replace the current mapping.`,
       if (!overwrite)
         return;
     }
-    const backupOk = await this._createBackupIfNeeded("step", doDelete);
-    if (!backupOk)
-      return;
     this._setBusy(true, doDelete ? "Deleting mapping\u2026" : "Saving mapping\u2026");
-    const map = ((_a2 = stateObj.attributes) == null ? void 0 : _a2.map) || [];
+    const map = ((_b = (_a2 = this._records[this._getRuntimeMappingEntity()]) == null ? void 0 : _a2.attributes) == null ? void 0 : _b.map) || [];
     const newMap = doDelete ? this._delete_from_map(map, this._lockedPcc) : this._build_new_map(map, [this._draft]);
     logger.debug("E2ALearningCard: built new map with", newMap.length, "entries", newMap);
     try {
-      await this._publish_map(
+      await this._save_map(
         this._getRuntimeMappingEntity(),
-        this._getRuntimeMappingTopic(),
         newMap
       );
       logger.info("E2A: Change saved to mapping");
     } catch (err) {
       logger.error("E2A: failed to save mapping", err);
       await confirm(
-        "Failed to save mapping.\nCheck Home Assistant logs for details.",
+        err.message || "Failed to save mapping.",
         { yes: "Ok", no: "" }
       );
+      return;
     } finally {
       this._setBusy(false);
     }
@@ -3472,7 +3341,7 @@ This will replace the current mapping.`,
     var _a2, _b, _c, _d, _e, _f;
     logger.info("E2ALearningCard: Undoing");
     if (this._learningMode) {
-      const lastupdated = (_a2 = this.hass.states[this._getStepBackupEntity()]) == null ? void 0 : _a2.last_updated;
+      const lastupdated = (_a2 = this._records[this._getStepBackupEntity()]) == null ? void 0 : _a2.last_updated;
       if (!lastupdated) {
         logger.warn("E2ALearningCard: no step backup available");
         this._setBusy(false);
@@ -3483,10 +3352,9 @@ This will replace the current mapping.`,
         return;
       this._setBusy(true, "Undoing last save\u2026");
       try {
-        await this._publish_map(
+        await this._save_map(
           this._getRuntimeMappingEntity(),
-          this._getRuntimeMappingTopic(),
-          ((_c = (_b = this.hass.states[this._getStepBackupEntity()]) == null ? void 0 : _b.attributes) == null ? void 0 : _c.map) || []
+          ((_c = (_b = this._records[this._getStepBackupEntity()]) == null ? void 0 : _b.attributes) == null ? void 0 : _c.map) || []
         );
         logger.info("E2ALearningCard: session undo completed");
         await confirm("Mapping before last save restored.", { yes: "Ok", no: "" });
@@ -3502,7 +3370,7 @@ This will replace the current mapping.`,
         this._setBusy(false);
       }
     } else {
-      const lastupdated = (_d = this.hass.states[this._getSessionBackupEntity()]) == null ? void 0 : _d.last_updated;
+      const lastupdated = (_d = this._records[this._getSessionBackupEntity()]) == null ? void 0 : _d.last_updated;
       if (!lastupdated) {
         logger.warn("E2ALearningCard: no session backup available");
         return;
@@ -3512,10 +3380,9 @@ This will replace the current mapping.`,
         return;
       this._setBusy(true, "Restoring session backup\u2026");
       try {
-        await this._publish_map(
+        await this._save_map(
           this._getRuntimeMappingEntity(),
-          this._getRuntimeMappingTopic(),
-          ((_f = (_e = this.hass.states[this._getSessionBackupEntity()]) == null ? void 0 : _e.attributes) == null ? void 0 : _f.map) || []
+          ((_f = (_e = this._records[this._getSessionBackupEntity()]) == null ? void 0 : _e.attributes) == null ? void 0 : _f.map) || []
         );
         logger.info("E2ALearningCard: session undo completed");
         await confirm("Mapping restored to state before last learning session.", { yes: "Ok", no: "" });
@@ -3552,7 +3419,7 @@ This will replace the current mapping.`,
     `;
   }
   render() {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j;
     if (!this.hass) {
       return x`
         <ha-card header="Event2Action Learning">
@@ -3567,35 +3434,21 @@ This will replace the current mapping.`,
     if (setupIssues.length) {
       return this._renderSetupIssues(setupIssues);
     }
-    const mapSensor = this.hass.states[this._getRuntimeMappingEntity()];
-    if (!this._hasValidLastData) {
-      return x`
-      <ha-card header="Event2Action Learning">
-        <div class="content">
-          <p>Waiting for first Event2Action event.</p>
-          <p>
-            Package setup looks available. If this is a fresh install, press a configured RF433/ZHA button
-            or verify your feeder automation/event source from <code>QUICKSTART.md</code>.
-          </p>
-        </div>
-      </ha-card>
-      ${this.renderBusyOverlay()}
-    `;
-    }
+    const runtimeRecord = this._records[this._getRuntimeMappingEntity()];
     const isEditing = !!this._lockedPcc;
     const displayProto = isEditing ? this._lockedPcc.proto : this._lastProto;
     const displayCode = isEditing ? this._lockedPcc.code : this._lastCode;
-    const map = ((_a2 = mapSensor == null ? void 0 : mapSensor.attributes) == null ? void 0 : _a2.map) || [];
+    const map = ((_a2 = runtimeRecord == null ? void 0 : runtimeRecord.attributes) == null ? void 0 : _a2.map) || [];
     const match = this.findMapping(map, displayProto, displayCode);
     const nonEditMatch = !isEditing && displayProto && displayCode ? match : null;
-    const blocked = ((_b = this.hass.states[this._getBlockingHelperEntity()]) == null ? void 0 : _b.state) === "on";
+    const blocked = this._blockedUntil > performance.now() / 1e3;
     return x`
     <ha-card header="Event2Action Learning">
       <div class="content">
 
         <!-- Learning toggle -->
-        <div class="row row-4">
-          <div class="flex_align">
+        <div class="row toolbar">
+          <div class="control-group">
             ${this._renderSwitch(
       this._learningMode,
       isEditing,
@@ -3605,7 +3458,7 @@ This will replace the current mapping.`,
               ${this._learningMode ? "Learning mode ON" : "Learning mode OFF"}
             </span>
           </div>
-          <div class="flex_align">
+          <div class="control-group">
             <ha-button
               title=${this._undoHint}
               ?disabled=${this._undoDisabled}
@@ -3614,7 +3467,7 @@ This will replace the current mapping.`,
               ${this._undoLabel}
             </ha-button>
           </div>
-          <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--e2a-border-radius);">
+          <div class="control-group action-panel">
             <ha-button class=${blocked ? "danger" : ""}
               @click=${() => blocked ? this.unBlockEvents() : this.blockEvents(this._blockSeconds)}
               title=${blocked ? "Terminate event blocking" : "Temporarily block event2action automation from acting on incoming events"}>
@@ -3624,7 +3477,7 @@ This will replace the current mapping.`,
               label="seconds"
               type="number"
               min="1"
-              style="width: 100px;"
+              class="block-duration"
               .value=${String(this._blockSeconds)}
               @input=${(e2) => {
       this._blockSeconds = Number(e2.target.value);
@@ -3632,7 +3485,7 @@ This will replace the current mapping.`,
               @change=${(e2) => this._saveBlockSeconds(e2.target.value)}
             ></ha-input>
           </div>
-          <div class="flex_align" style="background: var(--secondary-background-color); padding: 8px; border-radius: var(--e2a-border-radius);">
+          <div class="control-group action-panel">
             <ha-button
               @click=${this._onExportMap}
               title="Export current mapping to JSON file"
@@ -3663,7 +3516,7 @@ This will replace the current mapping.`,
           <div class="row-4">
             <ha-input
               label="Friendly name (Optional)"
-              .value=${(_d = (_c = this._draft) == null ? void 0 : _c.name) != null ? _d : ""}
+              .value=${(_c = (_b = this._draft) == null ? void 0 : _b.name) != null ? _c : ""}
               @input=${this._onMappingNameChanged}>
             </ha-input>
           </div>
@@ -3676,7 +3529,7 @@ This will replace the current mapping.`,
             .customCommonServiceDataKeys=${this._customCommonServiceDataKeys}
             .prefillServiceData=${this._prefillServiceData}
             .existing=${!!match}
-            .externalDirty=${((_f = (_e = this._draft) == null ? void 0 : _e.name) != null ? _f : "") !== ((_h = (_g = this._original) == null ? void 0 : _g.name) != null ? _h : "")}
+            .externalDirty=${((_e = (_d = this._draft) == null ? void 0 : _d.name) != null ? _e : "") !== ((_g = (_f = this._original) == null ? void 0 : _f.name) != null ? _g : "")}
             .disabled=${false}
             @draft-changed=${this._onDraftChanged}
             @save=${this._onEditorSave}
@@ -3710,12 +3563,12 @@ This will replace the current mapping.`,
                   <li>Entity: ${nonEditMatch.entity}</li>
                   <li>Service: ${nonEditMatch.service}</li>
                   <li class="item ${this._hasValue(nonEditMatch.service_data) ? "" : "hidden"}">Service Data:
-                    <pre>${JSON.stringify((_i = nonEditMatch.service_data) != null ? _i : {}, null, 2)}</pre>
+                    <pre>${JSON.stringify((_h = nonEditMatch.service_data) != null ? _h : {}, null, 2)}</pre>
                   </li>
                   <li>Active: ${nonEditMatch.active ? "yes" : "no"}</li>
                   <li>Remote: ${nonEditMatch.remote}</li>
                   <li>Type: ${nonEditMatch.type}</li>
-                  <li>Command: ${(_k = (_j = nonEditMatch.command) != null ? _j : nonEditMatch.button) != null ? _k : ""}</li>
+                  <li>Command: ${(_j = (_i = nonEditMatch.command) != null ? _i : nonEditMatch.button) != null ? _j : ""}</li>
                   <li>Channel: ${nonEditMatch.channel}</li>
                 </ul>
               ` : x`
@@ -3749,8 +3602,38 @@ __publicField(E2ALearningCard, "styles", [
       position: relative;
       display: block;
       }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--e2a-gap, 12px);
+    }
+    .toolbar > .control-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--e2a-gap, 12px);
+      box-sizing: border-box;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .toolbar .action-panel {
+      background: var(--secondary-background-color);
+      padding: 8px;
+      border-radius: var(--e2a-border-radius);
+    }
+    .toolbar ha-button {
+      max-width: 100%;
+    }
+    .toolbar .block-duration {
+      flex: 0 1 100px;
+      width: 100px;
+      min-width: 0;
+      max-width: 100%;
+    }
     .content {
       padding: 16px;
+      min-width: 0;
       li > pre {
         margin: 0;
       }

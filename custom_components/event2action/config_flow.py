@@ -1,0 +1,57 @@
+"""Single-instance UI setup. Existing users use ordinary JSON import."""
+
+from homeassistant import config_entries
+from homeassistant.core import callback
+
+try:
+    import probatio as vol
+except ImportError:
+    import voluptuous as vol
+
+from .const import CONF_SHOW_IN_SIDEBAR, CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS, DOMAIN
+
+
+class Event2ActionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Configure Event2Action."""
+
+    VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return Event2ActionOptionsFlow()
+
+    async def async_step_user(self, user_input=None):
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_configured()
+        if user_input is not None:
+            return self.async_create_entry(title="Event2Action", data={})
+        return self.async_show_form(step_id="user")
+
+
+class Event2ActionOptionsFlow(config_entries.OptionsFlow):
+    """Configure global runtime behavior without reloading the integration."""
+
+    async def async_step_init(self, user_input=None):
+        errors = {}
+        if user_input is not None:
+            value = user_input.get(CONF_TOGGLE_REPEAT_MS)
+            if type(value) is int and value >= 0:
+                return self.async_create_entry(title="", data={
+                    **self.config_entry.options,
+                    CONF_TOGGLE_REPEAT_MS: value,
+                    CONF_SHOW_IN_SIDEBAR: user_input.get(CONF_SHOW_IN_SIDEBAR, True),
+                })
+            errors[CONF_TOGGLE_REPEAT_MS] = "invalid_toggle_repeat_ms"
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required(CONF_SHOW_IN_SIDEBAR, default=self.config_entry.options.get(
+                    CONF_SHOW_IN_SIDEBAR, True
+                )): bool,
+                vol.Required(CONF_TOGGLE_REPEAT_MS, default=self.config_entry.options.get(
+                    CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS
+                )): vol.All(int, vol.Range(min=0)),
+            }),
+            errors=errors,
+        )

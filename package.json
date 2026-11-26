@@ -1,12 +1,12 @@
 {
   "name": "ha-event2action",
-  "version": "0.1.0",
-  "description": "Event2Action is a Home Assistant editor and runtime for mapping normalized button events to Home Assistant actions. It focuses on the Lovelace learning card, MQTT-backed runtime map storage, helper scripts, and feeder automations for `esphome.rf433` and `zha_event`.",
+  "version": "0.3.0",
+  "description": "Event2Action Home Assistant integration and learning card with local HA storage.",
   "main": "vite.config.js",
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "python -m unittest discover -s tests -v && node --test tests/frontend.test.cjs"
   },
   "repository": {
     "type": "git",

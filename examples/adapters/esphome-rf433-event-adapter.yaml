@@ -1,0 +1,70 @@
+# Working ESPHome RF433 example using the custom-event-adapter.yaml structure.
+# Reference only: not installed or loaded by the integration.
+# KEEP DISABLED with Event2Action's built-in RF433 adapter, which already emits
+# these same bus events. Enabling both would duplicate events/actions.
+# This is for studying/adapting the normalization, not an installation step.
+#
+# Incoming: esphome.rf433
+#   device_ieee: "AA:BB:CC:DD:EE:FF"
+#   protocol: 1
+#   code: "1234567"
+#   command: "A"
+# Outgoing match key: proto=1, code=1234567 (runtime compares string values).
+# `proto` is accepted as an alias when `protocol` is absent or false-like.
+
+alias: Event2Action ESPHome RF433 adapter (disabled example)
+description: Reference YAML equivalent of the integration's built-in RF433 adapter.
+initial_state: false
+
+triggers:
+  - trigger: event
+    event_type: esphome.rf433
+    # OPTIONAL: restrict to one receiver (exact payload match, if supplied).
+    # event_data:
+    #   device_ieee: "AA:BB:CC:DD:EE:FF"
+
+# No guard by default: reproduce the built-in adapter's missing-field defaults.
+conditions: []
+# OPTIONAL: reject events without a code instead of emitting the default "0".
+# Replace conditions: [] with:
+# conditions:
+#   - condition: template
+#     value_template: >-
+#       {{ trigger.event.data.get('code') is not none
+#          and (trigger.event.data.code | string | trim | length) > 0 }}
+
+actions:
+  # 1. Transform source fields, preserving existing RF433 matching semantics.
+  - variables:
+      source_device: "{{ trigger.event.data.get('device_ieee', '0') }}"
+      source_protocol: >-
+        {{ trigger.event.data.get('protocol') or trigger.event.data.get('proto', 'unknown') }}
+      source_code: "{{ trigger.event.data.get('code', '0') }}"
+      source_command: "{{ trigger.event.data.get('command', '') }}"
+
+  # 2. Send the normalized event; mapping/execution stays in Event2Action.
+  - event: event2action_bus
+    event_data:
+      proto: "{{ source_protocol }}"
+      code: "{{ source_code }}"
+      # OPTIONAL learning/display metadata, included here to match the adapter.
+      device_ieee: "{{ source_device }}"
+      command: "{{ source_command }}"
+      # OPTIONAL diagnostics, included here as in the built-in adapter.
+      source: rf433
+      origin_event_type: esphome.rf433
+      raw: "{{ trigger.event.data }}"
+      ts: "{{ now().isoformat() }}"
+
+# IMPORTANT: device_ieee and command are NOT matching keys. Unlike the generic
+# template, this example intentionally does not add them to code, preserving
+# existing RF433 maps. Changing that format requires relearning/converting maps.
+# Missing values receive the defaults above; explicit nulls are not defaulted.
+# Protocol/code may remain numeric in HA templates; the runtime stringifies them.
+
+mode: queued
+max: 10
+# OPTIONAL: retain automation traces while adapting/debugging this example.
+# id: event2action_rf433_reference_adapter
+# trace:
+#   stored_traces: 10

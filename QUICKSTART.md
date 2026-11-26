@@ -1,159 +1,56 @@
-# Quick Start Guide
+# Event2Action quick start
 
-Set up the Event2Action editor and runtime in Home Assistant.
+Requires Home Assistant 2026.11 or newer and an administrator account. MQTT is not required.
 
-## Prerequisites
+## Upgrade an existing installation
 
-- [ ] Home Assistant installed and running
-- [ ] MQTT broker configured
-- [ ] An RF433 source that emits `esphome.rf433` events, Zigbee devices using ZHA (emitting `zha_event`), or another event source with a corresponding event adapter
+1. Export your map to JSON in the old card and retain the file.
+2. Remove the old `packages/event2action.yaml` from Home Assistant's included packages and remove the standalone card/resource.
+3. Restart Home Assistant to stop the old runtime.
+4. Follow the installation steps below, then select **Import Map** in the card.
 
-## 1. Install the Home Assistant Package
+Old session and step backups do not transfer. Blocking duration resets to 60 seconds. Keep custom dashboard configuration separately. Do not remove MQTT or package includes used by other integrations.
 
-HACS installs the Lovelace card only. It does not copy the Home Assistant package into your config directory.
+## Install the integration
 
-From the Home Assistant Terminal/SSH add-on, download the package file into `/config/packages/`:
+1. Copy this repository's `custom_components/event2action/` folder, including `frontend/`, to `/config/custom_components/event2action/`.
+2. Restart Home Assistant.
+3. Select **Settings → Devices & services → Add integration → Event2Action**.
+4. Reload the browser and open **Event2Action** in the sidebar. The full-page learning card is created automatically.
 
-```bash
-mkdir -p /config/packages
-wget -O /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
-```
-
-If your terminal does not have `wget`, use `curl` instead:
-
-```bash
-mkdir -p /config/packages
-curl -L -o /config/packages/event2action.yaml https://raw.githubusercontent.com/Dschuli/ha-event2action/main/packages/event2action.yaml
-```
-
-Make sure package loading is enabled in `configuration.yaml`:
-
-```yaml
-homeassistant:
-  packages: !include_dir_named packages
-```
-
-If you already have a `homeassistant:` section, add only the `packages:` line under it. Restart Home Assistant after adding the package or changing `configuration.yaml`.
-
-## 2. Add the Dashboard Card
-
-Add this resource in Settings -> Dashboards -> Resources:
-
-```yaml
-url: /hacsfiles/ha-event2action/event2action-learning-card.js
-type: module
-```
-
-Add this card to a dashboard:
+A manual dashboard card is optional, for a separate view or custom card settings:
 
 ```yaml
 type: custom:event2action-learning-card
 ```
 
-Use a dedicated panel view for the cleanest layout. The editor is intentionally wide, so a regular card column will feel cramped.
+The integration loads its card automatically; do not add a separate resource. This development branch changes distribution from Dashboard to Integration; its existing Marketplace catalog entry still needs publisher migration.
 
-```yaml
-title: Event2Action
-path: event2action
-icon: mdi:remote
-panel: true
-cards:
-  - type: custom:event2action-learning-card
-```
+## Integration settings
 
-If you do not want Event2Action visible as a normal dashboard tab, make it a panel subview and link to it from another dashboard card:
+**Show in sidebar** is enabled by default. You can hide the entry under **Settings → Devices & services → Event2Action → Configure** without restarting. The page remains available at `/event2action-learning`, and the runtime and dashboard cards continue working.
 
-```yaml
-title: Event2Action
-path: event2action
-icon: mdi:remote
-subview: true
-panel: true
-cards:
-  - type: custom:event2action-learning-card
-```
+### Toggle repeat suppression
 
-Optional card configuration is available through the card editor, or as YAML keys beside `type`:
+Open **Settings → Devices & services → Event2Action → Configure**. Set **Toggle repeat suppression (ms)** to the interval during which repeated events for the same toggle mapping should be ignored. Default: **500 ms**; **0** disables suppression. Changes apply immediately. Other mappings and non-toggle actions are unaffected; learning still receives repeated events. This option is stored with the integration and is not included in map JSON exports.
 
-```yaml
-type: custom:event2action-learning-card
-entity_domain_list:
-  - switch
-  - light
-  - cover
-  - script
-  - automation
-auto_unblock: true
-log_level: 2
-custom_common_service_data_keys: {}
-prefill_service_data: {}
-```
+## Map and test a button
 
-## 3. Verify the Event Flow
+1. Import your saved JSON, or enable learning to create mappings.
+2. Block action execution while learning if needed. Learning and blocking are separate controls.
+3. Press a button, choose its target and action, then save.
+4. Turn learning off, unblock events, and test the button.
 
-Open Developer Tools -> Events.
-
-Listen to:
-
-```text
-event2action_bus
-```
-
-Then fire this test event:
-
-```text
-esphome.rf433
-```
-
-With event data:
+Without hardware, fire `esphome.rf433` in Developer Tools → Events:
 
 ```json
-{
-  "protocol": 1,
-  "code": "111111111",
-  "command": "test"
-}
+{"protocol": 1, "code": "111111111", "command": "test"}
 ```
 
-If the RF433 event adapter is working, an `event2action_bus` event appears and `input_text.event2action_last_event_store` updates.
+RF433 and ZHA adapters are built in. Custom UI/YAML automations can fire `event2action_bus` with string `proto` and `code` values; no Python adapter code is required.
 
-## 4. Create Your First Mapping
+For another source, copy the inactive [custom adapter YAML](examples/adapters/custom-event-adapter.yaml) and follow its [guide](examples/adapters/README.md). Do not duplicate the built-in RF433/ZHA adapters.
 
-1. Enable learning mode in the card.
-2. Trigger an RF433 or ZHA button event.
-3. Optionally enter a unique Friendly name. It is stored with the mapping and is intended mainly for future functionality enhancements.
-4. Select the target entity.
-5. Select the service, such as `light.toggle` or `switch.turn_on`.
-6. Save the mapping.
-7. Disable learning mode and trigger the event again.
+Maps and new undo snapshots persist through the HA Store API in `.storage/event2action.maps`; button execution reads memory. Do not edit that file directly. Use JSON export for a portable map backup.
 
-Optional example: if you use the dimmer-control support from [`Dschuli/rf433-esphome-sniffer`](https://github.com/Dschuli/rf433-esphome-sniffer), you can map a button to `script.turn_on` with target `script.dimmer_control` and service data like `{"light_entity":"light.living_room","steps":5,"bounce_at_top":false}`.
-
-## Migrating a v0.1.3-beta Mapping
-
-Export the old map, then use the standalone migration utility described in [migration/README.md](migration/README.md). The utility creates a separate v0.2.0 JSON file; review it before importing it through the card.
-
-## Troubleshooting
-
-**No bus event appears**
-
-- Confirm `/config/packages/event2action.yaml` is installed and Home Assistant was restarted.
-- Confirm the relevant event-adapter automation is enabled.
-- Confirm the incoming event is named `esphome.rf433` or `zha_event`.
-
-**Card not showing**
-
-- Verify the HACS frontend file exists under `/config/www/community/ha-event2action/`.
-- Verify the dashboard resource URL is `/hacsfiles/ha-event2action/event2action-learning-card.js`.
-- Clear the browser cache.
-
-**Mapping does not execute**
-
-- Check `sensor.event2action_runtime_map`.
-- Make sure `input_boolean.event2action_block_events` is off.
-- Check the automation trace for `Event2Action Bus Handler`.
-
-## More Detail
-
-- Full overview: [README.md](README.md)
-- Editor reference: [e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md)
+See [README.md](README.md) for storage behavior, troubleshooting, and rollback, and [the editor reference](e2a-mapping-editor-reference.md) for card options.
