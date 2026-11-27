@@ -1,4 +1,5 @@
 import { LitElement, html, css } from "lit";
+import { renderNavigationLinks } from "./e2a-navigation.js";
 import { confirm } from "./mixins/confirm.js";
 import { BusyOverlayMixin } from "./mixins/busy_overlay_mixin.js";
 import { formatDateTime } from "./utils/format.js";
@@ -18,6 +19,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
    * Reactive properties
    * ========================================================= */
   static properties = {
+    inSidebar: { attribute: false },
     hass: { attribute: false },
     config: { attribute: false },
     _lockedPcc: { state: true },
@@ -363,8 +365,15 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       : [];
   }
 
+  _renderDashboardLinks() {
+    return this.inSidebar ? null : html`
+      <nav class="dashboard-links" aria-label="Event2Action links">${renderNavigationLinks()}</nav>
+    `;
+  }
+
   _renderSetupIssues(issues) {
     return html`<ha-card header="Event2Action"><div class="content">
+        ${this._renderDashboardLinks()}
       ${issues.map(issue => html`<p>${issue.title}</p>${issue.items.map(item => html`<p>${item}</p>`)}`)}
       <p>Set up Event2Action under Settings → Devices &amp; services. Reload this page after setup.</p>
     </div></ha-card>`;
@@ -788,6 +797,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       return html`
         <ha-card header="Event2Action Learning">
           <div class="content">
+        ${this._renderDashboardLinks()}
             <p>Loading Home Assistant state.</p>
           </div>
         </ha-card>
@@ -818,6 +828,7 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
     return html`
     <ha-card header="Event2Action Learning">
       <div class="content">
+        ${this._renderDashboardLinks()}
 
         <!-- Learning toggle -->
         <div class="row toolbar">
@@ -984,6 +995,14 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       position: relative;
       display: block;
       }
+    .dashboard-links {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-bottom: 12px;
+    }
+    .dashboard-links a { color: inherit; text-underline-offset: 3px; }
     .mapping-heading {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));

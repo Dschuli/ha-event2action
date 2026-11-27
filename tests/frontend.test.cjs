@@ -12,6 +12,7 @@ function card() {
     BusyOverlayMixin: base => base,
     CONFIG: { DEFAULT_BLOCK_SECONDS: 60, AUTO_UNBLOCK: true },
     logger: { info() {}, debug() {}, warn() {}, error() {} },
+    renderNavigationLinks: () => "Integration settings | Adapter examples",
     setLogLevel() {}, formatDateTime: (_, value) => String(value),
     confirm: async () => true,
     customElements: { get: name => tags.get(name), define: (name, value) => tags.set(name, value) },

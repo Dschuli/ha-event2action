@@ -14,6 +14,7 @@ from homeassistant.core import callback
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+_SIDEBAR_CARD_CONFIG = "sidebar_card_config"
 
 
 def register(hass):
@@ -21,6 +22,7 @@ def register(hass):
     websocket_api.async_register_command(hass, save)
     websocket_api.async_register_command(hass, block)
     websocket_api.async_register_command(hass, learning)
+    websocket_api.async_register_command(hass, sidebar_card_config)
 
 
 def get_runtime(hass, connection, msg):
@@ -115,3 +117,23 @@ async def learning(hass, connection, msg):
         connection.send_error(msg["id"], "save_failed", "Could not save the session backup. Learning state is unchanged.")
         return
     connection.send_result(msg["id"], {"storage": runtime.storage.snapshot(), **runtime.status()})
+
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "event2action/sidebar_card_config",
+    vol.Optional("config"): dict,
+})
+@websocket_api.require_admin
+@callback
+def sidebar_card_config(hass, connection, msg):
+    """Read or save the sidebar card settings on the integration entry."""
+    entries = hass.config_entries.async_entries(DOMAIN)
+    if not entries:
+        connection.send_error(msg["id"], "not_ready", "Set up Event2Action first")
+        return
+    entry = entries[0]
+    if "config" in msg:
+        hass.config_entries.async_update_entry(
+            entry, options={**entry.options, _SIDEBAR_CARD_CONFIG: msg["config"]}
+        )
+    connection.send_result(msg["id"], entry.options.get(_SIDEBAR_CARD_CONFIG, {}))

@@ -169,7 +169,9 @@ Open **Settings → Devices & services → Event2Action → Configure** to set *
 
 ### RF433
 
-The RF433 event adapter expects events named `esphome.rf433` with data similar to:
+The RF433 event adapter listens to `esphome.rf433` by default. Change **RF433 event name** in Event2Action settings to use another source event with the same payload format. Changes replace the listener immediately and persist across restarts. Existing protocol/code mappings remain valid. Blank names, `*`, `event2action_bus`, and `zha_event` are rejected to prevent loops or overlapping adapters.
+
+The expected event data looks like:
 
 ```json
 {

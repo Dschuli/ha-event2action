@@ -567,6 +567,16 @@ s.finalized = true, s._$litElement$ = true, null === (l = globalThis.litElementH
 const n = globalThis.litElementPolyfillSupport;
 null == n || n({ LitElement: s });
 (null !== (o = globalThis.litElementVersions) && void 0 !== o ? o : globalThis.litElementVersions = []).push("3.3.3");
+function renderNavigationLinks() {
+  return x`
+    <a href="/config/integrations/integration/event2action">Integration settings</a>
+    <a
+      href="https://github.com/Dschuli/ha-event2action/tree/integration-migration/examples/adapters"
+      target="_blank" rel="noopener noreferrer">
+      Adapter examples
+    </a>
+  `;
+}
 class ConfirmModal extends s {
   constructor() {
     super();
@@ -2436,28 +2446,6 @@ class Event2ActionLearningCardEditor extends s {
           <small>Entity domains shown by the target entity selector.</small>
         </label>
 
-        <details class="advanced-section"
-          ?open=${this._expandedSections.common}
-          @toggle=${(event) => this._onSectionToggle("common", event)}>
-          <summary>Custom common service data keys</summary>
-          <div class="section-content">
-          ${this._renderCustomCommonServiceDataTable(this._customCommonServiceRows)}
-          <small>Each block is one entity/service match. Entity and service support wildcards, for example <code>*dimmer_control</code> and <code>script.*</code>. Parameters must be a JSON array.</small>
-          ${this._customCommonServiceDataKeysError ? x`<div class="error">${this._customCommonServiceDataKeysError}</div>` : null}
-          </div>
-        </details>
-
-        <details class="advanced-section"
-          ?open=${this._expandedSections.prefill}
-          @toggle=${(event) => this._onSectionToggle("prefill", event)}>
-          <summary>Prefill service data</summary>
-          <div class="section-content">
-          ${this._renderPrefillServiceDataTable(this._prefillServiceRows)}
-          <small>Each block is one entity/service match. Entity and service support wildcards. Prefill JSON must be an object and is stored in the config as the matching JSON string.</small>
-          ${this._prefillServiceDataError ? x`<div class="error">${this._prefillServiceDataError}</div>` : null}
-          </div>
-        </details>
-
         <div class="field switch-row">
           <span>
             <span>Auto unblock</span>
@@ -2482,6 +2470,28 @@ class Event2ActionLearningCardEditor extends s {
             <option value="4">4 - debug</option>
           </select>
         </label>
+
+        <details class="advanced-section"
+          ?open=${this._expandedSections.prefill}
+          @toggle=${(event) => this._onSectionToggle("prefill", event)}>
+          <summary>Prefill service data</summary>
+          <div class="section-content">
+          ${this._renderPrefillServiceDataTable(this._prefillServiceRows)}
+          <small>Each block is one entity/service match. Entity and service support wildcards. Prefill JSON must be an object and is stored in the config as the matching JSON string.</small>
+          ${this._prefillServiceDataError ? x`<div class="error">${this._prefillServiceDataError}</div>` : null}
+          </div>
+        </details>
+
+        <details class="advanced-section"
+          ?open=${this._expandedSections.common}
+          @toggle=${(event) => this._onSectionToggle("common", event)}>
+          <summary>Custom common service data keys</summary>
+          <div class="section-content">
+          ${this._renderCustomCommonServiceDataTable(this._customCommonServiceRows)}
+          <small>Each block is one entity/service match. Entity and service support wildcards, for example <code>*dimmer_control</code> and <code>script.*</code>. Parameters must be a JSON array.</small>
+          ${this._customCommonServiceDataKeysError ? x`<div class="error">${this._customCommonServiceDataKeysError}</div>` : null}
+          </div>
+        </details>
       </div>
     `;
   }
@@ -2669,34 +2679,106 @@ __publicField(Event2ActionLearningCardEditor, "styles", i$1`
 if (!customElements.get("event2action-learning-card-editor")) {
   customElements.define("event2action-learning-card-editor", Event2ActionLearningCardEditor);
 }
+const CARD_SETTINGS_COMMAND = "event2action/sidebar_card_config";
 class Event2ActionPanel extends s {
-  firstUpdated() {
-    this._configureCard();
-  }
   updated(changedProps) {
-    if (changedProps.has("panel"))
+    var _a2;
+    if (changedProps.has("panel") || changedProps.has("hass") && !changedProps.get("hass")) {
       this._configureCard();
+    }
+    if (this.hass && changedProps.has("hass") && this.hass.connection !== ((_a2 = changedProps.get("hass")) == null ? void 0 : _a2.connection)) {
+      this._loadCardSettings();
+    }
   }
-  _configureCard() {
-    var _a2, _b, _c;
-    (_c = this.renderRoot.querySelector("event2action-learning-card")) == null ? void 0 : _c.setConfig({
+  async _loadCardSettings() {
+    try {
+      this._savedConfig = await this.hass.callWS({ type: CARD_SETTINGS_COMMAND });
+      this._configureCard();
+    } catch {
+    }
+  }
+  _cardConfig() {
+    var _a2, _b;
+    return {
       type: "custom:event2action-learning-card",
-      ...((_b = (_a2 = this.panel) == null ? void 0 : _a2.config) == null ? void 0 : _b.card_config) || {}
-    });
+      ...(_b = (_a2 = this.panel) == null ? void 0 : _a2.config) == null ? void 0 : _b.card_config,
+      ...this._savedConfig
+    };
+  }
+  _configureCard(config = this._cardConfig()) {
+    var _a2;
+    (_a2 = this.renderRoot.querySelector("event2action-learning-card")) == null ? void 0 : _a2.setConfig(config);
+  }
+  async _openCardSettings() {
+    var _a2, _b;
+    await this._loadCardSettings();
+    const config = this._cardConfig();
+    this._draftConfig = config;
+    this._settingsError = "";
+    await this.updateComplete;
+    const editor = this.renderRoot.querySelector("event2action-learning-card-editor");
+    editor == null ? void 0 : editor.setConfig(config);
+    (_a2 = this.renderRoot.querySelector("dialog")) == null ? void 0 : _a2.showModal();
+    (_b = this.renderRoot.querySelector("#card-settings-title")) == null ? void 0 : _b.focus();
+  }
+  async _closeCardSettings() {
+    var _a2, _b;
+    (_a2 = this.renderRoot.querySelector("dialog")) == null ? void 0 : _a2.close();
+    this._draftConfig = null;
+    await this.updateComplete;
+    (_b = this.renderRoot.querySelector("#card-settings-button")) == null ? void 0 : _b.focus();
+  }
+  async _saveCardSettings() {
+    this._savingSettings = true;
+    this._settingsError = "";
+    try {
+      this._savedConfig = await this.hass.callWS({
+        type: CARD_SETTINGS_COMMAND,
+        config: this._draftConfig
+      });
+      this._configureCard();
+      this._closeCardSettings();
+    } catch (err) {
+      this._settingsError = err.message || "Home Assistant could not save the card settings.";
+    } finally {
+      this._savingSettings = false;
+    }
   }
   render() {
     return x`
       <header>
         <ha-menu-button .hass=${this.hass} .narrow=${this.narrow}></ha-menu-button>
         <h1>Event2Action</h1>
-        <a class="examples-link"
-          href="https://github.com/Dschuli/ha-event2action/tree/integration-migration/examples/adapters"
-          target="_blank" rel="noopener noreferrer">
-          Adapter examples
-        </a>
+        <nav class="header-links" aria-label="Event2Action links">
+          <button type="button" id="card-settings-button"
+            @click=${this._openCardSettings} ?disabled=${!!this._draftConfig}>Card settings</button>
+          ${renderNavigationLinks()}
+        </nav>
       </header>
       <main>
-        <event2action-learning-card .hass=${this.hass}></event2action-learning-card>
+        ${this._draftConfig ? x`
+          <dialog aria-labelledby="card-settings-title"
+            @cancel=${(event) => {
+      event.preventDefault();
+      if (!this._savingSettings)
+        this._closeCardSettings();
+    }}>
+            <h2 id="card-settings-title" tabindex="-1">Card settings</h2>
+            <event2action-learning-card-editor
+              .hass=${this.hass}
+              @config-changed=${(event) => {
+      this._draftConfig = event.detail.config;
+    }}
+            ></event2action-learning-card-editor>
+            ${this._settingsError ? x`<p role="alert">${this._settingsError}</p>` : null}
+            <div class="settings-actions">
+              <ha-button @click=${this._closeCardSettings} ?disabled=${this._savingSettings}>Cancel</ha-button>
+              <ha-button @click=${this._saveCardSettings} ?disabled=${this._savingSettings}>Save</ha-button>
+            </div>
+          </dialog>
+        ` : null}
+        <event2action-learning-card .inSidebar=${true} .hass=${this.hass}>
+        </event2action-learning-card>
       </main>
     `;
   }
@@ -2704,7 +2786,10 @@ class Event2ActionPanel extends s {
 __publicField(Event2ActionPanel, "properties", {
   hass: { attribute: false },
   narrow: { type: Boolean },
-  panel: { attribute: false }
+  panel: { attribute: false },
+  _draftConfig: { state: true },
+  _settingsError: { state: true },
+  _savingSettings: { state: true }
 });
 __publicField(Event2ActionPanel, "styles", i$1`
     :host {
@@ -2724,19 +2809,46 @@ __publicField(Event2ActionPanel, "styles", i$1`
       background: var(--app-header-background-color, var(--card-background-color));
     }
     h1 { font-size: 20px; font-weight: 400; margin: 0 12px; }
-    .examples-link {
+    .header-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
       margin-inline-start: auto;
+    }
+    .header-links button {
+      appearance: none;
+      background: none;
+      border: 0;
+      font: inherit;
+      cursor: pointer;
+    }
+    .header-links :is(a, button) {
+      text-decoration: underline;
       padding: 12px 8px;
       color: inherit;
       font-size: 14px;
       text-underline-offset: 3px;
     }
-    .examples-link:focus-visible {
+    .header-links :is(a, button):focus-visible {
       outline: 2px solid currentColor;
       outline-offset: 2px;
       border-radius: 4px;
     }
     main { padding: 16px; box-sizing: border-box; min-width: 0; }
+    .settings-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    dialog {
+      box-sizing: border-box;
+      width: min(48rem, calc(100% - 2rem));
+      max-height: calc(100dvh - 2rem);
+      overflow: auto;
+      padding: 20px;
+      border: 0;
+      border-radius: 12px;
+      color: var(--primary-text-color);
+      background: var(--card-background-color);
+    }
+    dialog h2 { margin-top: 0; }
+    dialog::backdrop { background: rgb(0 0 0 / 50%); }
     event2action-learning-card { display: block; min-width: 0; }
   `);
 if (!customElements.get("event2action-panel")) {
@@ -3055,8 +3167,14 @@ const _E2ALearningCard = class extends BusyOverlayMixin(s) {
   _getSetupIssues() {
     return this._backendError || this._revision === null ? [{ title: "Event2Action integration unavailable", items: [this._backendError || "Connecting\u2026"] }] : [];
   }
+  _renderDashboardLinks() {
+    return this.inSidebar ? null : x`
+      <nav class="dashboard-links" aria-label="Event2Action links">${renderNavigationLinks()}</nav>
+    `;
+  }
   _renderSetupIssues(issues) {
     return x`<ha-card header="Event2Action"><div class="content">
+        ${this._renderDashboardLinks()}
       ${issues.map((issue) => x`<p>${issue.title}</p>${issue.items.map((item) => x`<p>${item}</p>`)}`)}
       <p>Set up Event2Action under Settings → Devices &amp; services. Reload this page after setup.</p>
     </div></ha-card>`;
@@ -3438,6 +3556,7 @@ This replaces the current map. Legacy session and step backups are not imported.
       return x`
         <ha-card header="Event2Action Learning">
           <div class="content">
+        ${this._renderDashboardLinks()}
             <p>Loading Home Assistant state.</p>
           </div>
         </ha-card>
@@ -3459,6 +3578,7 @@ This replaces the current map. Legacy session and step backups are not imported.
     return x`
     <ha-card header="Event2Action Learning">
       <div class="content">
+        ${this._renderDashboardLinks()}
 
         <!-- Learning toggle -->
         <div class="row toolbar">
@@ -3610,6 +3730,7 @@ This replaces the current map. Legacy session and step backups are not imported.
 };
 let E2ALearningCard = _E2ALearningCard;
 __publicField(E2ALearningCard, "properties", {
+  inSidebar: { attribute: false },
   hass: { attribute: false },
   config: { attribute: false },
   _lockedPcc: { state: true },
@@ -3628,6 +3749,14 @@ __publicField(E2ALearningCard, "styles", [
       position: relative;
       display: block;
       }
+    .dashboard-links {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-bottom: 12px;
+    }
+    .dashboard-links a { color: inherit; text-underline-offset: 3px; }
     .mapping-heading {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));

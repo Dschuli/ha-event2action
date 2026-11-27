@@ -8,6 +8,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.exceptions import ConfigEntryError
 
 from .const import (
+    CONF_RF433_EVENT, DEFAULT_RF433_EVENT,
     CONF_RF433_ENABLED, CONF_SHOW_IN_SIDEBAR, CONF_TOGGLE_REPEAT_MS,
     CONF_ZHA_ENABLED, DEFAULT_TOGGLE_REPEAT_MS, DOMAIN, VERSION,
 )
@@ -42,6 +43,7 @@ async def async_setup_entry(hass, entry):
     await async_update_panel(hass, entry)
     runtime = Runtime(
         hass, storage, entry.options.get(CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS),
+        rf433_event=entry.options.get(CONF_RF433_EVENT, DEFAULT_RF433_EVENT),
         rf433_enabled=entry.options.get(CONF_RF433_ENABLED, True),
         zha_enabled=entry.options.get(CONF_ZHA_ENABLED, True),
     )
@@ -75,6 +77,7 @@ async def async_update_panel(hass, entry):
 async def async_update_options(hass, entry):
     runtime = hass.data[DOMAIN].get("runtime")
     if runtime is not None:
+        runtime.set_rf433_event(entry.options.get(CONF_RF433_EVENT, DEFAULT_RF433_EVENT))
         runtime.set_adapters_enabled(
             rf433_enabled=entry.options.get(CONF_RF433_ENABLED, True),
             zha_enabled=entry.options.get(CONF_ZHA_ENABLED, True),

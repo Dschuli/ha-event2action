@@ -231,6 +231,45 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(runtime.rf433_enabled)
         self.assertFalse(runtime.zha_enabled)
 
+    async def test_rf433_event_changes_replace_listener_and_preserve_mapping(self):
+        listeners = {}
+
+        def listen(event_type, handler):
+            listeners[event_type] = handler
+            return lambda: listeners.pop(event_type)
+
+        self.hass.bus = types.SimpleNamespace(async_listen=listen, async_fire=Mock())
+        self.runtime.start()
+        self.assertIn("esphome.rf433", listeners)
+        self.runtime.set_rf433_event(" custom.rf433 ")
+        self.assertNotIn("esphome.rf433", listeners)
+        self.assertIn("custom.rf433", listeners)
+        self.assertIn("zha_event", listeners)
+        self.assertIn("event2action_bus", listeners)
+        self.runtime.set_rf433_event("custom.rf433")
+        listeners["custom.rf433"](types.SimpleNamespace(data={"protocol": 1, "code": 42}))
+        normalized = self.hass.bus.async_fire.call_args.args[1]
+        self.assertEqual(normalized["origin_event_type"], "custom.rf433")
+        self.storage.data["runtime"]["map"] = [mapping()]
+        await self.dispatch(normalized)
+        self.hass.services.async_call.assert_awaited_once()
+        self.runtime.set_adapters_enabled(rf433_enabled=False, zha_enabled=True)
+        self.runtime.set_rf433_event("other.rf433")
+        self.hass.bus.async_fire.reset_mock()
+        listeners["other.rf433"](types.SimpleNamespace(data={"protocol": 1, "code": 42}))
+        self.hass.bus.async_fire.assert_not_called()
+        await self.runtime.stop()
+        self.assertEqual(listeners, {})
+
+    def test_rf433_event_defaults_saved_names_and_validation(self):
+        self.assertEqual(self.runtime.rf433_event, "esphome.rf433")
+        runtime = runtime_module.Runtime(self.hass, self.storage, rf433_event="saved.rf")
+        self.assertEqual(runtime.rf433_event, "saved.rf")
+        for invalid in (None, "", "  ", "*", "event2action_bus", "zha_event", 123):
+            with self.assertRaises(ValueError):
+                self.runtime.set_rf433_event(invalid)
+        self.assertEqual(self.runtime.rf433_event, "esphome.rf433")
+
     async def test_match_ignores_device_and_command(self):
         self.storage.data["runtime"]["map"] = [mapping()]
         await self.dispatch({"proto": 1, "code": 42, "device_ieee": "other", "command": "different"})

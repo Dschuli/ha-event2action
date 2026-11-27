@@ -9,6 +9,7 @@ except ImportError:
     import voluptuous as vol
 
 from .const import (
+    CONF_RF433_EVENT, DEFAULT_RF433_EVENT, validate_rf433_event,
     CONF_RF433_ENABLED, CONF_SHOW_IN_SIDEBAR, CONF_TOGGLE_REPEAT_MS,
     CONF_ZHA_ENABLED, DEFAULT_TOGGLE_REPEAT_MS, DOMAIN,
 )
@@ -39,21 +40,30 @@ class Event2ActionOptionsFlow(config_entries.OptionsFlow):
         errors = {}
         if user_input is not None:
             value = user_input.get(CONF_TOGGLE_REPEAT_MS)
-            if type(value) is int and value >= 0:
+            try:
+                event_type = validate_rf433_event(user_input.get(CONF_RF433_EVENT, DEFAULT_RF433_EVENT))
+            except ValueError:
+                errors[CONF_RF433_EVENT] = "invalid_rf433_event"
+            if type(value) is not int or value < 0:
+                errors[CONF_TOGGLE_REPEAT_MS] = "invalid_toggle_repeat_ms"
+            if not errors:
                 return self.async_create_entry(title="", data={
                     **self.config_entry.options,
                     CONF_TOGGLE_REPEAT_MS: value,
+                    CONF_RF433_EVENT: event_type,
                     CONF_SHOW_IN_SIDEBAR: user_input.get(CONF_SHOW_IN_SIDEBAR, True),
                     CONF_RF433_ENABLED: user_input.get(CONF_RF433_ENABLED, True),
                     CONF_ZHA_ENABLED: user_input.get(CONF_ZHA_ENABLED, True),
                 })
-            errors[CONF_TOGGLE_REPEAT_MS] = "invalid_toggle_repeat_ms"
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Required(CONF_RF433_ENABLED, default=self.config_entry.options.get(
                     CONF_RF433_ENABLED, True
                 )): bool,
+                vol.Required(CONF_RF433_EVENT, default=self.config_entry.options.get(
+                    CONF_RF433_EVENT, DEFAULT_RF433_EVENT
+                )): str,
                 vol.Required(CONF_ZHA_ENABLED, default=self.config_entry.options.get(
                     CONF_ZHA_ENABLED, True
                 )): bool,

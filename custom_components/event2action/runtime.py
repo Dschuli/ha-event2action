@@ -7,16 +7,16 @@ from time import monotonic, time
 
 from homeassistant.core import callback
 
-from .const import BUS_EVENT, DEFAULT_TOGGLE_REPEAT_MS
+from .const import BUS_EVENT, DEFAULT_TOGGLE_REPEAT_MS, DEFAULT_RF433_EVENT, validate_rf433_event
 from .storage import now
 
 _LOGGER = logging.getLogger(__name__)
 AUTO_UNBLOCK_GRACE_SECONDS = 3
 
 
-def normalize_rf433(data):
+def normalize_rf433(data, event_type=DEFAULT_RF433_EVENT):
     return {
-        "source": "rf433", "origin_event_type": "esphome.rf433",
+        "source": "rf433", "origin_event_type": event_type,
         "device_ieee": data.get("device_ieee", "0"),
         "proto": data.get("protocol") or data.get("proto", "unknown"),
         "code": data.get("code", "0"), "command": data.get("command", ""),
@@ -39,11 +39,13 @@ def normalize_zha(data):
 
 class Runtime:
     def __init__(self, hass, storage, toggle_repeat_ms=DEFAULT_TOGGLE_REPEAT_MS,
-                 *, rf433_enabled=True, zha_enabled=True):
+                 *, rf433_enabled=True, zha_enabled=True, rf433_event=DEFAULT_RF433_EVENT):
         self.hass = hass
         self.storage = storage
         self.listeners = set()
         self.unsubscribers = []
+        self._rf433_unsubscribe = None
+        self.rf433_event = validate_rf433_event(rf433_event)
         self.last_event = None
         self.learning_mode = False
         self.learning_started_at = None
@@ -64,6 +66,17 @@ class Runtime:
         """Apply built-in adapter settings immediately, leaving the custom bus active."""
         self.rf433_enabled = rf433_enabled
         self.zha_enabled = zha_enabled
+
+    @callback
+    def set_rf433_event(self, event_type):
+        """Replace only the RF listener when the configured source changes."""
+        event_type = validate_rf433_event(event_type)
+        if event_type == self.rf433_event:
+            return
+        if self._rf433_unsubscribe is not None:
+            self._rf433_unsubscribe()
+            self._rf433_unsubscribe = self.hass.bus.async_listen(event_type, self._rf433)
+        self.rf433_event = event_type
 
     @callback
     def set_toggle_repeat_ms(self, milliseconds):
@@ -134,8 +147,8 @@ class Runtime:
 
     @callback
     def start(self):
+        self._rf433_unsubscribe = self.hass.bus.async_listen(self.rf433_event, self._rf433)
         self.unsubscribers = [
-            self.hass.bus.async_listen("esphome.rf433", self._rf433),
             self.hass.bus.async_listen("zha_event", self._zha),
             self.hass.bus.async_listen(BUS_EVENT, self._receive),
         ]
@@ -143,7 +156,7 @@ class Runtime:
     @callback
     def _rf433(self, event):
         if self.rf433_enabled:
-            self.hass.bus.async_fire(BUS_EVENT, normalize_rf433(event.data))
+            self.hass.bus.async_fire(BUS_EVENT, normalize_rf433(event.data, self.rf433_event))
 
     @callback
     def _zha(self, event):
@@ -221,6 +234,9 @@ class Runtime:
         self.notify()
 
     async def stop(self):
+        if self._rf433_unsubscribe is not None:
+            self._rf433_unsubscribe()
+            self._rf433_unsubscribe = None
         if self._auto_unblock_handle is not None:
             self._auto_unblock_handle.cancel()
             self._auto_unblock_handle = None

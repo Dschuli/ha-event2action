@@ -704,32 +704,6 @@ class Event2ActionLearningCardEditor extends LitElement {
           <small>Entity domains shown by the target entity selector.</small>
         </label>
 
-        <details class="advanced-section"
-          ?open=${this._expandedSections.common}
-          @toggle=${event => this._onSectionToggle("common", event)}>
-          <summary>Custom common service data keys</summary>
-          <div class="section-content">
-          ${this._renderCustomCommonServiceDataTable(this._customCommonServiceRows)}
-          <small>Each block is one entity/service match. Entity and service support wildcards, for example <code>*dimmer_control</code> and <code>script.*</code>. Parameters must be a JSON array.</small>
-          ${this._customCommonServiceDataKeysError
-            ? html`<div class="error">${this._customCommonServiceDataKeysError}</div>`
-            : null}
-          </div>
-        </details>
-
-        <details class="advanced-section"
-          ?open=${this._expandedSections.prefill}
-          @toggle=${event => this._onSectionToggle("prefill", event)}>
-          <summary>Prefill service data</summary>
-          <div class="section-content">
-          ${this._renderPrefillServiceDataTable(this._prefillServiceRows)}
-          <small>Each block is one entity/service match. Entity and service support wildcards. Prefill JSON must be an object and is stored in the config as the matching JSON string.</small>
-          ${this._prefillServiceDataError
-            ? html`<div class="error">${this._prefillServiceDataError}</div>`
-            : null}
-          </div>
-        </details>
-
         <div class="field switch-row">
           <span>
             <span>Auto unblock</span>
@@ -754,6 +728,32 @@ class Event2ActionLearningCardEditor extends LitElement {
             <option value="4">4 - debug</option>
           </select>
         </label>
+
+        <details class="advanced-section"
+          ?open=${this._expandedSections.prefill}
+          @toggle=${event => this._onSectionToggle("prefill", event)}>
+          <summary>Prefill service data</summary>
+          <div class="section-content">
+          ${this._renderPrefillServiceDataTable(this._prefillServiceRows)}
+          <small>Each block is one entity/service match. Entity and service support wildcards. Prefill JSON must be an object and is stored in the config as the matching JSON string.</small>
+          ${this._prefillServiceDataError
+            ? html`<div class="error">${this._prefillServiceDataError}</div>`
+            : null}
+          </div>
+        </details>
+
+        <details class="advanced-section"
+          ?open=${this._expandedSections.common}
+          @toggle=${event => this._onSectionToggle("common", event)}>
+          <summary>Custom common service data keys</summary>
+          <div class="section-content">
+          ${this._renderCustomCommonServiceDataTable(this._customCommonServiceRows)}
+          <small>Each block is one entity/service match. Entity and service support wildcards, for example <code>*dimmer_control</code> and <code>script.*</code>. Parameters must be a JSON array.</small>
+          ${this._customCommonServiceDataKeysError
+            ? html`<div class="error">${this._customCommonServiceDataKeysError}</div>`
+            : null}
+          </div>
+        </details>
       </div>
     `;
   }
