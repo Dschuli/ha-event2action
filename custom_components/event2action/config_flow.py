@@ -2,6 +2,8 @@
 
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import section
+from homeassistant.helpers.selector import BooleanSelector
 
 try:
     import probatio as vol
@@ -39,6 +41,7 @@ class Event2ActionOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None):
         errors = {}
         if user_input is not None:
+            user_input = {**user_input, **user_input.get("advanced", {})}
             value = user_input.get(CONF_TOGGLE_REPEAT_MS)
             try:
                 event_type = validate_rf433_event(user_input.get(CONF_RF433_EVENT, DEFAULT_RF433_EVENT))
@@ -60,19 +63,24 @@ class Event2ActionOptionsFlow(config_entries.OptionsFlow):
             data_schema=vol.Schema({
                 vol.Required(CONF_RF433_ENABLED, default=self.config_entry.options.get(
                     CONF_RF433_ENABLED, True
-                )): bool,
-                vol.Required(CONF_RF433_EVENT, default=self.config_entry.options.get(
-                    CONF_RF433_EVENT, DEFAULT_RF433_EVENT
-                )): str,
+                )): BooleanSelector(),
                 vol.Required(CONF_ZHA_ENABLED, default=self.config_entry.options.get(
                     CONF_ZHA_ENABLED, True
-                )): bool,
+                )): BooleanSelector(),
                 vol.Required(CONF_SHOW_IN_SIDEBAR, default=self.config_entry.options.get(
                     CONF_SHOW_IN_SIDEBAR, True
-                )): bool,
-                vol.Required(CONF_TOGGLE_REPEAT_MS, default=self.config_entry.options.get(
-                    CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS
-                )): vol.All(int, vol.Range(min=0)),
+                )): BooleanSelector(),
+                vol.Required("advanced"): section(
+                    vol.Schema({
+                        vol.Required(CONF_RF433_EVENT, default=self.config_entry.options.get(
+                            CONF_RF433_EVENT, DEFAULT_RF433_EVENT
+                        )): str,
+                        vol.Required(CONF_TOGGLE_REPEAT_MS, default=self.config_entry.options.get(
+                            CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS
+                        )): vol.All(int, vol.Range(min=0)),
+                    }),
+                    {"collapsed": not errors},
+                ),
             }),
-            errors=errors,
+            errors={"advanced": errors} if errors else {},
         )
