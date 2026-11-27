@@ -120,19 +120,6 @@ For a hardware-free test, fire `esphome.rf433` in Developer Tools → Events wit
 - [Adapter examples](examples/adapters/EXAMPLES_README.md) — Supported sources, device setup, and custom adapters.
 - [Mapping editor reference](e2a-mapping-editor-reference.md) — Editor controls, service data, and import/export.
 
-## Development and project structure
-
-```text
-custom_components/event2action/   # Integration, runtime, Store, API, bundled frontend
-src/                              # Card and editor source
-legacy/event2action.yaml           # Old package, rollback reference only
-migration/                        # Older mapping-format conversion utility
-tests/                            # Runtime/storage and frontend boundary tests
-docs/runtime-compatibility.md      # Legacy behavior baseline and acceptance cases
-```
-
-Run `npm run build` to rebuild `dist/` and the integration's `frontend/` copy together. Run `npm test` for focused tests. These use Home Assistant boundary doubles; a real HA installation is still required for integration setup, frontend registration, permissions, restart, and migration smoke testing.
-
 ## Acknowledgments
 
 - Home Assistant community for inspiration and support
