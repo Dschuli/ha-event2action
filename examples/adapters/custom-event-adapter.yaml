@@ -5,7 +5,7 @@
 #   event_type: my_remote_button
 #   data: {device_id: remote_1, button: 2, action: press}
 # Outgoing match key: proto=custom_remote, code=remote_1/2/press
-# See README.md in this directory for setup, testing, and optional features.
+# See EXAMPLES_README.md in this directory for setup, testing, and optional features.
 
 alias: Event2Action custom event adapter (example)
 description: Translate one source event into Event2Action's normalized bus event.
@@ -43,11 +43,10 @@ actions:
   # 2. Send the normalized event. Event2Action handles mapping and execution.
   - event: event2action_bus
     event_data:
-      # REQUIRED: use a distinct, stable namespace for this adapter family.
+      # REQUIRED: choose a source name, such as custom_remote, to separate its codes.
       proto: custom_remote
       # REQUIRED: include device + button + action to distinguish sources.
       # Use another separator/encoding if your source fields can contain '/'.
-      # Never include timestamps, counters, battery level, or signal strength.
       code: "{{ source_device ~ '/' ~ source_button ~ '/' ~ source_command }}"
 
       # OPTIONAL but recommended: learning/display metadata, not matching keys.

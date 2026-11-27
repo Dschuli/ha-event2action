@@ -1,356 +1,116 @@
-# Event2Action Learning Card & Editor Documentation
+# Learning Card and mapping editor
 
+Use this reference while configuring mappings and card options. Installation is covered in the [quick start](QUICKSTART.md), and source-specific setup is in the [adapter examples](examples/adapters/EXAMPLES_README.md).
 
-> **Note**: This is the detailed reference for the Event2Action learning interface and editor.
-> For initial setup, see [QUICKSTART.md](QUICKSTART.md) or [README.md](README.md).
-> The Event2Action custom integration supplies the runtime, HA storage, and bundled card. MQTT and the old YAML package are not required. See [QUICKSTART.md](QUICKSTART.md).
-> Setup also adds an administrator-only Event2Action sidebar page with default card options. Dashboard cards remain optional and retain their individual card configuration.
+## Create or edit a mapping
 
->
+1. Enable **Learning mode**. A backup is captured before the session begins.
+2. Press the button you want to map. The editor opens with its protocol and code, or with its existing mapping.
+3. Choose the **Entity** and **Service**, add any service data, and select **Save**.
+4. Turn learning off and test the button with events unblocked.
 
-## Overview
-
-The Event2Action Learning Card is a custom Lovelace card for Home Assistant that provides an interactive interface for learning, mapping, and managing normalized event codes. It allows you to associate protocol/code pairs with Home Assistant entities and actions without manually editing configuration files or creating a large number of automations.
-
-## Components
-
-The system consists of three main components:
-
-### 1. **Event2Action Learning Card** (`event2action-learning-card`)
-The main custom Lovelace card that provides the learning interface and workflow management.
-
-### 2. **Editor Component** (`e2a-editor.js`)
-A reusable editor component for creating and modifying event mappings.
-
-### 3. **Configuration** (`e2a-config.js`)
-Configuration constants and entity references used throughout the system.
-
----
-
-## Features
-
-### Learning Mode
-- **Auto-detection**: Automatically detects new normalized button events when a remote button is pressed
-- **Interactive**: Opens the editor immediately when a new code is detected
-- **Session Management**: Creates automatic backups before starting a learning session
-
-### Code Mapping
-- **Entity Assignment**: Map event codes to Home Assistant entities such as switches, lights, covers, scripts, scenes, fans, media players, and climate entities
-- **Service Selection**: Choose which service to call (turn_on, turn_off, toggle, etc.)
-- **Service Data**: Add optional JSON service data for advanced control (brightness, RGB color, etc.)
-- **Active/Inactive**: Enable or disable individual mappings without deleting them
-
-### Metadata Organization
-- **Friendly name**: Assign an optional unique human-readable name to the complete mapping
-- **Remote**: Tag codes by remote control name
-- **Type**: Categorize by device type
-- **Command**: Record the command reported by the event source
-- **Channel**: Organize multi-channel devices
-
-### Backup & Recovery
-- **Session Backup**: Automatic backup created when entering learning mode
-- **Step Backup**: Backup created before each save operation
-- **Undo Last Session**: Restore the mapping state from before the learning session
-- **Undo Last Save**: Revert individual save operations
-
-### Import/Export
-- **Export Map**: Download the entire mapping as a JSON file
-- **Import Map**: Upload and restore mappings from a JSON file
-
-### Event Blocking
-- **Temporary Block**: Prevent mapped Event2Action automations from triggering during configuration
-- **Configurable Duration**: Set how many seconds to block events
-
----
-
-## Prerequisites
-
-Before using the Event2Action Learning Card, ensure you have completed the initial setup:
-
-- **Quick Setup**: See [QUICKSTART.md](QUICKSTART.md) for a streamlined 5-minute setup guide
-- **Detailed Installation**: See [README.md](README.md) for complete installation instructions
-- **Home Assistant Integration**: Install `custom_components/event2action/`, restart Home Assistant, and add Event2Action under Devices & services
-- **Setup Diagnostics**: The card shows a connection warning if the integration API is unavailable or the user lacks administrator access
-- **Dashboard Layout**: Use the card in a dedicated panel view, or a panel subview if you want to hide it from the normal dashboard tabs. `mdi:remote` is a good view icon.
-
----
-
-## How to Use
-
-> **Tip:** You can test and explore the Event2Action Learning Card and editor interface even if your RF433 event source is not running. To simulate a normalized event:
-> 1. Open **Developer Tools → Events** in Home Assistant.
-> 2. In the **Event to fire** field, enter: `esphome.rf433`
-> 3. In the **Event data** field, enter (as valid JSON):
->    ```json
->    {"protocol": 1, "code": "111111111"}
->    ```
-> 4. Click **Fire Event**.
-> This will trigger the learning card/editor as if a real event was received, allowing you to test mappings and UI behavior without hardware.
-
-### Learning New Codes
-
-1. **Enable Learning Mode**
-   - Toggle the "Learning mode" switch ON
-   - The system creates a session backup automatically
-
-2. **Press a Remote Button**
-   - Press any button from your configured event source, such as an RF433 or ZHA remote
-   - The editor opens automatically with the detected code
-
-3. **Configure the Mapping**
-   - **Entity**: Select which Home Assistant entity to control.
-   - **Service**: Choose the service to call (e.g., `light.turn_on`).
-   - **Friendly name** (optional): Assign a unique human-readable name. The value is stored now and is intended mainly for future functionality enhancements.
-   - **Service Data** (optional): Add JSON parameters like brightness or color
-   - **Active**: Enable/disable this mapping
-   - **Metadata** (optional): Add Remote, Type, Command, and Channel for organization
+Use **Block events** during configuration if existing mappings could trigger unwanted actions. Learning continues while actions are blocked.
 
 ![Learning mode with a detected event open in the mapping editor](pictures/e2a-editor-learning-mode.png)
 
-4. **Save the Mapping**
-   - Click "Save" to store the mapping
-   - A step backup is created before saving
+To edit an existing mapping, enable learning and press its button again. While the editor is open, it stays on that mapping. **Cancel** discards the draft; **Delete** removes an existing mapping after confirmation. **Save** becomes available when fields change.
 
-5. **Test the Mapping**
-   - Make sure blocking of events is not activated
-   - Press the remote button to verify it works
+### Mapping fields
 
-### Editing Existing Codes
+| Field | Use |
+| --- | --- |
+| Enabled | Switch the mapping on or off. Disable it to retain an incomplete mapping for later. |
+| Friendly name | Optional mapping name, displayed in the card. Names must be unique, ignoring letter case. |
+| Entity | Target entity, filtered by the domains configured for the card. |
+| Service | Action to call, such as `light.turn_on` or `cover.set_cover_position`. The list follows the entity's domain and accepts custom values. |
+| Service data | Optional JSON object with action parameters. |
+| Remote, Type, Command, Channel | Optional labels for organizing and recognizing mappings. Existing values are suggested. Command may be filled from the source event. |
 
-**Option 1: Re-learn Mode**
-1. Enable Learning Mode
-2. Press the remote button you want to edit
-3. The editor opens with existing values pre-filled
-4. Modify as needed and click Save
+The **Enabled** switch is beside the mapping heading. In exported JSON, its field is named `active`.
 
-**Option 2: Manual Edit**
-For bulk editing or advanced modifications, export the map, edit the JSON file directly, then import it back. Use an editor with JSON support (e.g., VS Code) to ensure proper syntax.
+The protocol and code identify the mapping. Friendly names and organizational labels help you find and understand it. If several mappings share the same protocol/code pair, the first enabled mapping runs.
 
-### Deleting Codes
+Changing the target entity to a different domain clears the selected service and service data. Enabled mappings require both an entity and a service.
 
-1. Enable Learning Mode
-2. Press the remote button to edit
-3. Click the "Delete" button in the editor
-4. Confirm the deletion
+## Service data
 
-### Using Backups
+Enter a JSON object with the parameters accepted by the selected Home Assistant action.
 
-**Undo Last Session**
-- Restores all mappings to the state before starting the last learning session
-- Available when learning mode is OFF
-- Disabled if no session backup exists
+| Action | Example data |
+| --- | --- |
+| Light brightness | `{"brightness":128}` |
+| Light color | `{"rgb_color":[255,0,0],"brightness":200}` |
+| Light transition | `{"brightness":255,"transition":2}` |
+| Cover position | `{"position":50}` |
+| Media player volume | `{"volume_level":0.3}` |
 
-**Undo Last Save**
-- Restores to the state before the last individual save
-- Available during a learning session
-- Helps recover from accidental saves
-
-### Import/Export Workflow
-
-**Export**
-1. Click "Export Map"
-2. A JSON file downloads with timestamp (e.g., `event2action_map_2026-01-13T14-30-00.json`)
-3. Store safely as a backup
-
-**Import**
-1. Click "Import Map"
-2. Select a previously exported JSON file
-3. Confirm the import
-4. A session backup is created automatically
-5. Current mappings are replaced with imported data
-
-**Migrate from v0.1.3-beta**
-
-Migration is provided as a standalone command-line utility rather than a card action. See [migration/README.md](migration/README.md) for requirements, transformations, safety behavior, and the complete procedure.
-
----
-
-## Editor Reference
-
-### Required Fields
-
-- **Entity**: The Home Assistant entity to control
-  - Entities from domains as: `switch`, `light`, `cover`, `script`, `automation`, `scene`, `input_boolean`, `button`, `fan`, `media_player`, and `climate` can be selected
-  - Additional domains can be configured in the card configuration editor
-  - Uses entity picker with domain filtering
-
-- **Service**: The service to call on the entity
-  - Auto-populated based on entity domain
-  - Supports custom services
-  - Examples: `light.turn_on`, `switch.toggle`, `cover.set_cover_position`
-  
-### Optional Fields
-
-- **Active**: Enable/disable the mapping (default: ON)
-
-- **Service Data**: JSON object with service parameters for entities requiring/supporting service data
-  - Validated in real-time
-  - Common parameters available via dropdown, for example:
-    - **Light**: brightness, rgb_color, color_temp, transition
-    - **Cover**: position
-    - **Fan**: percentage, preset mode, oscillation, direction
-    - **Media Player**: volume_level
-    - **Climate**: temperature, HVAC mode, fan mode
-  - Common parameters by service can be customized or extended in the card configuration editor
-  - 
-
-These fields have no effect on the event processing. You can use them to organize/document your mappings.
-
-- **Friendly name**: Unique human-readable name for the complete mapping
-  - Compared case-insensitively when checking uniqueness
-  - Stored with the mapping and displayed by the learning card
-  - Intended mainly for future functionality enhancements, such as referring to mappings by name
-
-While the editor works with any kind of event (through the appropriate event adapter), the remaining field names reflect the primary intended use and origin of this card and integration.
-
-- **Remote**: Name/identifier of the remote control
-  - Auto-suggests from existing values
-  - Supports custom values
-
-- **Type**: Device type category
-  - Auto-suggests from existing values
-  - Examples: "IT1500", "ELRO AB440R", "Remote Scene"
-
-- **Command**: Command reported by the event source
-  - Auto-suggests from existing values
-  - Uses the legacy `pressed` event value as a fallback
-  - Examples: "short_press", "double_press", "power", "up"
-  - For example, this field is prefilled for Zigbee scene remotes connected through the included ZHA event adapter
-
-- **Channel**: Channel identifier for multi-channel devices
-  - Auto-suggests from existing values
-  - Examples: "1", "2", "A", "B"
-
-### Additional Editor Features
-
-- **Add Custom Common Parameters**:
-  - You can add custom common parameters to the service data via the dropdown, as defined in the card configuration.
-  - These parameters are available for quick insertion and can be tailored to your use case.
-  - For service data that include entity info, you can use a provided secondary entity picker. You pick will be included at cursor position.
+**Add common parameter** inserts frequently used fields for the selected entity/service. **Select entity** opens a picker to insert an entity ID at the cursor. Use **(clear)** to reset the service data.
 
 ![Common service parameter dropdown for a light action](pictures/e2a-editor-common-parms.png)
 
-- **Preset Service Data for Entity/Service**:
-  - If a preset for a specific entity/service combination is defined in the config, the editor will automatically suggest or prefill the corresponding service data. E.g. if you want all light entities, where the name starts with "liv" to turn on with 75% brightness:
-  
- `{ "liv*|light.turn_on": "{\"brightness\":\"75%\"}" }`
+For several actions from one press, create a Home Assistant script and map the button to it. For `script.turn_on`, select the script entity and enter its variables as service data. Both `{"my_var":"value"}` and `{"variables":{"my_var":"value"}}` are accepted.
 
-- **Select Entity Option in Common Params**:
-  - When using the common parameter dropdown, you can choose the special option "Select entity" to insert an entity_id at the current cursor position in the service data field. This is especially useful for `script.turn_on` and advanced automations.
+The RF433 sniffer project includes an optional dimmer script. A typical mapping targets `script.dimmer_control` with service `script.turn_on` and data such as `{"light_entity":"light.bedroom","steps":5,"bounce_at_top":false}`. [Dimmer script documentation](https://github.com/Dschuli/rf433-esphome-sniffer/tree/main/dimmer_control)
+
+## Undo and backups
+
+| Control | Restores | Available when |
+| --- | --- | --- |
+| Undo last save | The map before the latest mapping edit | Learning is on and a different step backup exists |
+| Undo last session | The map before the latest learning session or import | Learning is off and a different session backup exists |
+
+Each edit replaces the step backup, so **Undo last save** provides one step of recovery. Entering learning captures the session backup once, even with multiple cards open. Review the confirmation before restoring.
+
+**Export Map** downloads all mapping entries as a timestamped JSON file. **Import Map** replaces the current map after confirmation and captures a session backup. Import and export are available outside learning/editing.
+
+For bulk changes, export, edit the JSON, and import it again. Keep the original export for recovery. Integration options and card configuration are managed separately from map exports. Older v0.1.3-beta maps need conversion before import. [Migration instructions](migration/README.md)
+
+## Card settings
+
+In the sidebar view, **Card settings** opens a dialog with **Save** and **Cancel**. Saved settings apply to the sidebar card across browsers and devices. For a dashboard card, use the dashboard's card editor; each card has its own configuration.
+
+| Option | Purpose |
+| --- | --- |
+| Entity domains | Domains available in the target picker. Add domains needed by your actions. |
+| Auto unblock | Clear blocking when the last card closes, after a three-second grace period. |
+| Log level | Browser logging, from `0` (off) to `4` (debug). The default is `2` (warnings and errors). |
+| Prefill service data | Templates applied when selecting a service for a matching entity. |
+| Custom common service data keys | Additional entries for **Add common parameter**. |
+
+The two service-data sections are at the bottom, with **Custom common service data keys** last. They start collapsed; the browser remembers which sections you expand. Each section supports JSON import/export for reusing its templates.
+
+### Prefill service data
+
+Add an entity pattern, a service pattern, and the JSON data to prefill. Patterns support `*`. For example, `light.living*` and `light.turn_on` can prefill `{"brightness_pct":75}`.
+
+In card YAML, each key uses `entity-pattern|service-pattern`, and its value is a JSON string:
+
+```yaml
+prefill_service_data:
+  "light.living*|light.turn_on": '{"brightness_pct":75}'
+```
+
+When several prefill patterns match, the last matching entry is used. Selecting a service can replace the current service data with its prefill, so review the result before saving.
+
+### Custom common service data keys
+
+Use this section to add parameters for scripts or other services. Each entry specifies an entity/service pattern and a JSON array of dropdown options. Matching entries extend the built-in suggestions.
+
+```yaml
+custom_common_service_data_keys:
+  "*dimmer_control|script.turn_on":
+    - label: light_entity
+      value: light_entity
+      default: ""
+```
 
 ![Custom common parameters for a script target](pictures/e2a-editor-custom-common-parms.png)
 
 ![Entity picker opened from the custom common parameter dropdown](pictures/e2a-editor-custom-common-parms-entity-selection.png)
 
-### Editor Behavior
+### Dashboard YAML example
 
-- **Save Button**: Only enabled when changes are made
-- **Cancel Button**: Discards changes and exits editor
-- **Delete Button**: Only enabled for existing mappings
-- **Domain Change**: Automatically clears service and service_data when entity domain changes
-- **JSON Validation**: Real-time validation of service_data JSON syntax
-
----
-
-## Technical Details
-
-### Data Flow
-
-1. **Event Reception**
-   - An event source fires a Home Assistant event, such as `esphome.rf433` or `zha_event`
-   - The built-in event adapter normalizes the event and forwards it to `event2action_bus`
-   - The integration sends the latest normalized event to subscribed cards over WebSocket
-
-2. **Card Detection**
-   - Learning card subscribes to the integration API
-   - Detects new events by comparing timestamps
-   - Filters out "old" events to prevent duplicate processing
-
-3. **Mapping Lookup**
-   - Card checks if the event code exists in the current mapping
-   - Displays existing action data or "unmapped" status
-
-4. **Editor Workflow**
-   - User modifies mapping in editor component
-   - Changes tracked via internal state
-   - Save submits a validated map to the backend with its expected revision
-   - Backend persists and verifies the map through the HA Store API before acknowledging success
-   - Card refreshes to show new mapping
-
-### Shared learning and blocking
-
-The backend shares learning mode and block status across the sidebar and dashboard instances. Joining an existing learning session does not create another session backup. Drafts remain local, so save before switching views. HA restart resets learning mode to off.
-
-Auto unblock applies after the last card disconnects, with a 3-second reconnection grace period. A different Event2Action card opening during that interval preserves blocking. Closing one of several cards leaves the shared block intact. The last card's Auto unblock preference controls this behavior; the normal timed expiry is independent.
-
-### Toggle repeat suppression
-
-This is an integration setting, separate from dashboard card options. Open **Settings → Devices & services → Event2Action → Configure** and set **Toggle repeat suppression (ms)**. The default is **500**; **0** disables suppression. Changes apply immediately without reloading the integration.
-
-The first active mapping for a protocol/code pair executes. Repeated events for that same toggle mapping within the configured interval are suppressed using event arrival time, even if processing is delayed in the queue. A repeat exactly at the interval boundary is allowed. Suppressed repeats do not extend the window. Other mappings and non-toggle actions are unaffected, and repeated events remain visible for learning. The integration option is not included in JSON map exports.
-
-### Storage Architecture
-
-The integration stores runtime maps, the blocking duration, and new session/step backups in `.storage/event2action.maps` using Home Assistant's versioned Store API. Runtime lookups use memory. Step snapshots and map edits are committed together. Session snapshots are captured when learning starts and on import. Connected cards receive updates through the integration WebSocket API, not state sensors.
-
-Legacy session and step backups are not imported. New installations start with a 60-second duration, learning off, and no active block. JSON export contains only map entries, preserving the existing export format.
-
-### Mapping Structure
-
-Each mapping entry contains:
-
-```json
-{
-  "name": "Bedroom main light",
-  "device_ieee": "00:12:4b:00:12:34:56:78",
-  "proto": "zha",
-  "code": "00124b0012345678-1-toggle",
-  "command": "toggle",
-  "entity": "light.bedroom",
-  "service": "light.turn_on",
-  "service_data": {
-    "brightness": 128
-  },
-  "active": true,
-  "remote": "bedroom_remote",
-  "type": "light",
-  "channel": "1"
-}
-```
-
-`name`, `device_ieee`, `command`, and the organizational metadata fields are optional. The included ZHA adapter builds `code` from the full IEEE address without separators, followed by the endpoint and command. Legacy maps may still contain `button`; the editor reads it as a fallback and saves new or edited mappings using `command`.
-
----
-
-## Configuration Options
-
-### Logging
-
-Adjust logging level in the card configuration editor or card YAML:
-
-```yaml
-type: custom:event2action-learning-card
-log_level: 2
-```
-
-- `0` = Off
-- `1` = Errors only
-- `2` = Errors + Warnings (default)
-- `3` = Errors + Warnings + Info
-- `4` = All (including Debug)
-
-### Event Blocking Duration
-
-Default blocking duration is stored by the card when changed in the UI. It can also be seeded in card YAML:
-
-```yaml
-type: custom:event2action-learning-card
-default_block_seconds: 60
-```
-
-### Card Configuration YAML
-
-The following settings are user-facing card configuration options. **Custom common service data keys** and **Prefill service data** are collapsible sections, initially collapsed. Their open/closed states are remembered independently in this browser and do not modify card YAML:
+The visual editor manages these options. For a dashboard card configured in YAML, a combined example is:
 
 ```yaml
 type: custom:event2action-learning-card
@@ -359,207 +119,62 @@ entity_domain_list:
   - light
   - cover
   - script
-  - automation
   - scene
-  - input_boolean
-  - button
-  - fan
-  - media_player
-  - climate
 auto_unblock: true
 log_level: 2
+prefill_service_data:
+  "light.living*|light.turn_on": '{"brightness_pct":75}'
 custom_common_service_data_keys:
   "*dimmer_control|script.turn_on":
     - label: light_entity
       value: light_entity
       default: ""
-prefill_service_data:
-  "*dimmer_control|script.turn_on": '{"light_entity":" ","steps":5,"bounce_at_top":false}'
 ```
 
-No MQTT topics or helper entity names need configuring. Dashboard options remain separate from integration storage.
+## Learning and blocking across views
 
----
+Learning mode, the blocking timer, and the latest event are shared between sidebar and dashboard cards. Save drafts before changing views. Learning starts off after a Home Assistant restart.
+
+With **Auto unblock** enabled on the last card to disconnect, the block clears after three seconds if no card reconnects. Moving between Event2Action views during that interval preserves blocking. The timer also expires normally.
+
+Change the blocking duration using the card's **seconds** field. It is stored by the integration. The YAML option `default_block_seconds` can supply an initial value.
+
+**Integration settings → Configure** contains the built-in adapter switches, RF433 event name, sidebar visibility, and toggle repeat suppression. Repeat suppression defaults to 500 ms and applies to repeated events for the same toggle mapping. Set it to 0 to disable. [Integration settings overview](README.md#configure)
 
 ## Troubleshooting
 
-### Editor Doesn't Open When Button is Pressed
+| Symptom | Check |
+| --- | --- |
+| Editor stays closed | Enable learning, confirm the card is connected as an administrator, and check for fresh `event2action_bus` events. |
+| Integration unavailable | Add Event2Action under Devices & services, refresh the browser, and check HA logs. |
+| Save stays disabled | Change a field. Enabled mappings need an entity and service. |
+| Saved mapping does nothing | Check **Enabled**, event blocking, the target entity, and the selected service. |
+| Undo unavailable | Check learning mode and whether a different backup exists. |
+| Import rejected | Check the reported entry/field error and use a JSON array of mapping entries. Convert v0.1.3-beta exports first. |
+| Save failed or map changed elsewhere | Resolve the displayed error. For another session's changes, reload and review the newer map before saving again. |
 
-- **Check Learning Mode**: Ensure learning mode toggle is ON
-- **Check Connection**: Confirm the integration is configured and the card is connected as an administrator
-- **Check Event Source**: Ensure your event source is firing fresh `esphome.rf433` or `zha_event` events
-- **Check Timestamps**: Old events are ignored; press button again
+For a hardware-free test, fire `esphome.rf433` with `{"protocol":1,"code":"111111111"}` in Developer Tools → Events, using your configured event name if changed.
 
-### Card Shows Integration Unavailable
-
-- Configure Event2Action under Settings → Devices & services.
-- Use an administrator account for editing and learning.
-- Remove old card resource references and reload the browser after setup.
-- Check Home Assistant logs if stored data cannot be loaded.
-
-### Save Button Stays Disabled
-
-- **Make a Change**: Save is only enabled after modifying a field
-- **Check Required Fields**: Active entries require Entity and Service; disable an incomplete entry before saving
-
-### Mapping Doesn't Work After Save
-
-- **Check Save Result**: Saves are confirmed only after persistence; resolve any error shown in the card
-- **Check Runtime**: Verify the Event2Action integration is loaded and events are unblocked
-- **Check Entity**: Ensure the target entity exists and is accessible
-- **Check Service**: Verify the service is valid for the entity domain
-
-### Undo Buttons Disabled
-
-- **Session Undo**: Only available when learning mode is OFF and a session backup exists
-- **Step Undo**: Only available during an active learning session after at least one save
-- **Matching State**: Disabled if current state matches backup state
-
-### Import Fails
-
-- **File Format**: Ensure JSON is valid array format
-- **File Size**: Very large files may timeout
-- **Permissions**: Check Home Assistant has write access to the mapping file
-
----
-
-## Best Practices
-
-1. **Regular Backups**: Export your mapping periodically as a safety backup
-2. **Descriptive Metadata**: Use Friendly name, Remote, Type, Command, and Channel for better organization. Friendly name is also reserved for future functionality enhancements.
-3. **Test After Save**: Always test the mapping immediately after saving
-4. **Learning Mode**: Remember to disable learning mode when finished
-5. **Event Blocking**: Use event blocking when testing to prevent unwanted actions
-6. **Service Data**: Start simple; add service_data only when needed
-7. **Active Flag**: Use inactive mappings instead of deleting to preserve configurations
-
----
-
-## Advanced Usage
-
-### Service Data Examples
-
-**Light with Brightness**
-```json
-{
-  "brightness": 128
-}
-```
-
-**Light with Color**
-```json
-{
-  "rgb_color": [255, 0, 0],
-  "brightness": 200
-}
-```
-
-**Cover Position**
-```json
-{
-  "position": 50
-}
-```
-
-**Light with Transition**
-```json
-{
-  "brightness": 255,
-  "transition": 2
-}
-```
-
-### Multi-Action Mapping
-
-To trigger multiple actions from one event code:
-1. Create a script in Home Assistant with multiple actions
-2. Map the event code to call that script
-
-Example script:
-```yaml
-script:
-  bedroom_night_mode:
-    sequence:
-      - service: light.turn_on
-        target:
-          entity_id: light.bedroom
-        data:
-          brightness: 30
-          color_temp: 400
-      - service: cover.close_cover
-        target:
-          entity_id: cover.bedroom_blinds
-```
-
-Then map to: `script.bedroom_night_mode`
-
-### Optional Dimmer Script Mapping
-
-If you use the dimmer-control support from [`Dschuli/rf433-esphome-sniffer`](https://github.com/Dschuli/rf433-esphome-sniffer), you can map handheld button events to its script. A typical mapping would call `script.turn_on`, target `script.dimmer_control`, and pass script variables as service data:
+<details>
+<summary>Exported mapping format</summary>
 
 ```json
 {
-  "light_entity": "light.bedroom",
-  "steps": 5,
-  "bounce_at_top": false
+  "name": "Bedroom main light",
+  "proto": "zha",
+  "code": "00124b0012345678-1-toggle",
+  "entity": "light.bedroom",
+  "service": "light.turn_on",
+  "service_data": {"brightness":128},
+  "active": true,
+  "device_ieee": "00:12:4b:00:12:34:56:78",
+  "command": "toggle",
+  "remote": "bedroom_remote",
+  "type": "light",
+  "channel": "1"
 }
 ```
 
-The dimmer script itself is intentionally external to Event2Action.
+This is one entry in the exported JSON array. Name, source display information, and organizational labels are optional. Legacy entries may contain `button`; the editor accepts it as a fallback and saves edited entries using `command`.
 
-> **Note on Script Service Data**: When calling scripts, you can provide service data with or without the `variables` wrapper. Both formats are supported:
-> ```json
-> {"my_var": "value"}
-> ```
-> or
-> ```json
-> {"variables": {"my_var": "value"}}
-> ```
-> The automation will automatically wrap your service data in a `variables` object if needed.
-
----
-
-## File Structure
-
-```
-ha-event2action/
-├── dist/
-│   └── event2action-learning-card.js  # Built Lovelace card loaded by HACS/Home Assistant
-├── custom_components/event2action/   # Runtime, HA Store, API, and bundled card
-├── legacy/event2action.yaml          # Old package reference; do not install with integration
-├── migration/
-│   ├── migrate-v0.1.3-to-v0.2.0.js    # Standalone mapping migration utility
-│   └── README.md                       # Migration procedure and safety notes
-├── src/
-│   ├── e2a-learning-card.js           # Main learning card
-│   ├── e2a-editor.js                  # Mapping editor component
-│   ├── e2a-card-editor.js             # Lovelace card config editor
-│   ├── e2a-config.js                  # Default domains and editor options
-│   ├── mixins/                        # Shared card mixins
-│   ├── styles/                        # Shared Lit CSS modules
-│   └── utils/                         # Utility helpers
-├── hacs.json                          # HACS/Marketplace integration metadata
-├── QUICKSTART.md
-└── README.md
-```
-
----
-
-## Dependencies
-
-- **Lit**: Web components library bundled into the built card
-- **Home Assistant**: Frontend components (`ha-button`, `ha-selector`, etc.)
-- **Event2Action Integration**: Python runtime, local HA storage, and WebSocket API; no MQTT dependency
-
----
-
-## Support & Contribution
-
-For issues, feature requests, or contributions, refer to your local documentation or project repository.
-
-## Version History
-
-- **Current**: Full-featured learning card with backup/restore, import/export
-- Supports multiple entity domains and advanced service data
-- Auto-suggestion for metadata fields
-- Real-time JSON validation
+</details>

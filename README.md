@@ -10,273 +10,115 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
   </tr>
 </table>
 
-- ✅ Reuse old RF433 and IR remotes
-- ✅ Map Zigbee buttons and scene switches
-- ✅ Connect MQTT, ESPHome, and custom events
-- ✅ Control lights, plugs, scenes, scripts, and automations
-- ✅ Keep everything local, with no cloud dependency
+A familiar remote can switch a modern plug, set a lighting scene, or run a script. Event2Action brings those mappings into one visual interface.
 
-> **Integration migration:** This branch replaces the YAML/MQTT runtime with a bundled custom integration. Export your old map before upgrading and follow the migration steps below. Local tests pass; validation in a running Home Assistant instance is still required.
+> This development branch packages Event2Action as a Home Assistant integration with a bundled card. The earlier YAML/MQTT version has been used daily by the author for several months. Upgrading users should export their maps and follow the migration steps below.
 
-> **Legacy status:** Event2Action is stable in my daily Home Assistant installation and has been running reliably for several months. The configuration UI and setup process are still evolving, so feedback and issue reports are welcome.
+## Map a button
 
-## Why Event2Action?
+1. Open Event2Action and enable learning.
+2. Press a remote button.
+3. Choose the target entity and action, then save.
+4. Turn learning off and test the button.
 
-- **Reuse existing remotes (RF433, IR etc)** from Intertechno, Elro, Brennenstuhl, A-Trust, and similar systems to control modern Home Assistant devices
-- **Keep familiar physical controls** for household members who prefer old-school remotes over apps, dashboards, or voice control
-- **Turn simple remote buttons into generic Home Assistant triggers** for lights, plugs, scenes, scripts, and automations
-- **Works locally** with no cloud dependency once Home Assistant and your event source are running
-- **One button, multiple possibilities**: trigger scenes, scripts, or complex automations from a single press
-- **One central automation flow** handles incoming events through normalized event adapters
-- **Cost-effective**: repurpose existing remotes instead of buying new smart buttons
+## What you can do
 
-## Map a Button in 30 Seconds
+- Reuse RF433 and IR remotes, or connect Zigbee, Bluetooth, Wi-Fi, and Matter buttons through their Home Assistant integrations.
+- Map presses, double presses, and holds to lights, plugs, scenes, scripts, and automations.
+- Give mappings friendly names and configure service data in the visual editor.
+- Block actions while learning, undo changes, and export or import maps as JSON.
+- Use the sidebar interface or add Learning Cards to dashboards. Learning and event blocking are shared across views.
 
-1. Enable learning mode.
-2. Press a button or fire an event.
-3. Select a Home Assistant entity and action.
-4. Save the mapping.
-5. Press the button again—done.
+Mappings and backups are stored locally in Home Assistant. MQTT is needed only for sources that use it.
 
-## Supported Event Sources
+## Supported event sources
 
-| Event source | Support |
-|---|---|
-| RF433 remotes via ESPHome (RC Switch), e.g. [rf433-esphome-sniffer](https://github.com/Dschuli/rf433-esphome-sniffer) | ✅ Built-in adapter provided |
-| Zigbee buttons and scene switches via ZHA | ✅ Built-in adapter |
-| Zigbee buttons and scene switches via Zigbee2MQTT | [Example YAML code provided](examples/adapters/zigbee2mqtt-event-adapter.yaml) \* |
-| Matter buttons and remotes exposed as HA event entities | [Example YAML code provided](examples/adapters/matter-event-adapter.yaml) \* |
-| Sonoff RF Bridge running Tasmota (decoded RF codes via MQTT) | [Example YAML code provided](examples/adapters/tasmota-rf-bridge-event-adapter.yaml) \* |
-| OpenMQTTGateway with RCSwitch (decoded RF codes via MQTT) | [Example YAML code provided](examples/adapters/openmqttgateway-rcswitch-event-adapter.yaml) \* |
-| Shelly Button1 via the HA Shelly integration (Wi-Fi) | [Example YAML code provided](examples/adapters/shelly-button1-event-adapter.yaml) \* |
-| Shelly BLU RC Button 4 via BTHome (Bluetooth) | [Example YAML code provided](examples/adapters/shelly-blu-rc-button4-event-adapter.yaml) \* |
-| Flic 2, Duo, and Twist via the native Flic integration (Bluetooth) | [Example YAML code provided](examples/adapters/flic-event-adapter.yaml) \* |
-| Other MQTT messages | Custom adapter required |
-| ESPHome custom events | Custom adapter required |
-| IR receivers | Custom adapter required (depends on receiver/event format) |
-| Other Home Assistant events | Custom adapter required |
+| Setup | Sources |
+| --- | --- |
+| Built in | ESPHome RF433 and ZHA |
+| Example adapters | Zigbee2MQTT, Matter, Tasmota RF Bridge, OpenMQTTGateway, Shelly Button1, Shelly BLU RC Button 4, and Flic |
+| Custom adapter | Other HA events, MQTT messages, and IR receivers, depending on their output |
 
-**Built-in adapter** means no additional automation is needed. **Example YAML code provided** means copy the supplied automation and set its device-specific values. **Custom adapter required** means adapt the [generic template](examples/adapters/custom-event-adapter.yaml) or write an automation for your source's payload. These are setup requirements, not different processing modes: every adapter sends the same normalized `event2action_bus` event. Examples are not automatically installed or hardware-verified for every device.
+An adapter converts a button event into the code Event2Action learns. The examples guide has the full source list, IKEA guidance, and setup instructions. Copy-and-edit examples need testing on physical devices. [Browse adapter examples](examples/adapters/EXAMPLES_README.md)
 
-\* **Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, OpenMQTTGateway RCSwitch, Shelly Button1, Shelly BLU RC Button 4, and Flic examples need testing on physical devices. They are based on the documented interfaces and checked for YAML/template behavior, but are not verified on physical devices. Test reports and corrections are welcome via [GitHub issues](https://github.com/Dschuli/ha-event2action/issues/new).
+For ESPHome RF433, the author's sniffer project provides an ESP32/CC1101 receiver for RC Switch-compatible remotes. [rf433-esphome-sniffer](https://github.com/Dschuli/rf433-esphome-sniffer)
 
-A **custom event adapter** can be a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The integration includes adapters for `esphome.rf433` and `zha_event`. Custom adapters can still fire `event2action_bus` from UI/YAML automations without Python code.
+## Install
 
-Start with the inactive [YAML adapter template](examples/adapters/custom-event-adapter.yaml) and its [setup and optional-feature guide](examples/adapters/README.md). It shows an incoming event, payload-to-code transformation, and outgoing bus event. The integration does not load or activate the example.
+Requires **Home Assistant 2026.11+**, an administrator account, and a working event source.
 
-In Home Assistant, open **Settings → Devices & services → Event2Action → Configure** and select **Adapter examples and setup guide** to view the guide and YAML examples on GitHub. The **Adapter examples** link is also available in the Event2Action sidebar page header.
-
-A disabled [working ZHA YAML example](examples/adapters/zha-event-adapter.yaml) demonstrates the same structure with real Zigbee/ZHA payloads and matches the built-in normalization. Keep it disabled alongside the integration's built-in ZHA adapter.
-
-The disabled [ESPHome RF433 YAML example](examples/adapters/esphome-rf433-event-adapter.yaml) shows `esphome.rf433` normalization, protocol fallback, and field defaults. Keep it disabled alongside the built-in RF433 adapter.
-
-For Zigbee2MQTT, use the [copy-and-edit YAML automation](examples/adapters/zigbee2mqtt-event-adapter.yaml): enable `mqtt.include_device_information: true` in Zigbee2MQTT, enter only the remote's exact MQTT topic in the automation, then enable it. The adapter reads the IEEE address from `device.ieeeAddr` automatically. It handles all nonempty JSON `action` values without a per-button list. MQTT is used only for incoming events; map storage stays in HA. See the [adapter guide](examples/adapters/README.md#zigbee2mqtt-remote-example) for prerequisites and retained-message handling.
-
-For Matter, the [event-entity YAML example](examples/adapters/matter-event-adapter.yaml) forwards button event types from selected `event.*` entities into Event2Action. It needs your entity IDs and an already working HA Matter setup; Thread devices also need a Thread border router. Both Matter and Z2M examples need hardware testing as noted above.
-
-For a Sonoff RF Bridge running Tasmota, use the [MQTT RF adapter example](examples/adapters/tasmota-rf-bridge-event-adapter.yaml) and [setup guide](examples/adapters/README.md#sonoff-rf-bridge--tasmota-example). It forwards decoded `RfReceived.Data` codes; change the MQTT topic to match your bridge.
-
-For OpenMQTTGateway with RCSwitch, use the [MQTT RF adapter example](examples/adapters/openmqttgateway-rcswitch-event-adapter.yaml) and [setup guide](examples/adapters/README.md#openmqttgateway-with-rcswitch-example). It forwards decoded JSON RF values with their protocol and bit length; change the MQTT receive topic to match your gateway.
-
-Need an adapter for another event source? The author offers help creating additional adapters. [Open a GitHub issue](https://github.com/Dschuli/ha-event2action/issues/new) with your event source/device, incoming event type, and an example payload with sensitive information removed.
-
-## Documentation
-
-- **[QUICKSTART.md](QUICKSTART.md)** - Minimal setup path
-- **[e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md)** - Detailed editor features and usage
-
-## Features
-
-- **Event2Action runtime**: one central bus handler executes mapped Home Assistant actions
-- **RF433 event adapter**: normalizes `esphome.rf433` events into the shared `event2action_bus`
-- **ZHA event adapter**: normalizes `zha_event` button payloads into the same bus
-- **Learning mode**: interactively learn and map incoming event codes
-- **Visual editor**: create and edit mappings without hand-editing JSON
-- **Friendly names**: optionally assign a unique human-readable name to a mapping for organization and future functionality
-- **Backup and undo**: session and step-level backups
-- **Import/export**: save and restore mappings as JSON
-- **Event blocking**: temporarily suppress action execution while learning
-- **Home Assistant storage**: maps and undo backups are stored locally through the HA Store API, with no MQTT dependency
-
-## How It Works
-
-Event adapters translate source-specific payloads into a stable protocol/code pair and fire the shared `event2action_bus` event. The learning card captures that normalized event and stores its action mapping. The central bus handler then executes the mapped Home Assistant action whenever the event occurs again.
-
-For example, the built-in ZHA adapter uses `zha` as the protocol and derives a distinctive code from the device's full IEEE address, endpoint, and command (such as press, double press, or long press). Use it as a template for IR receivers, MQTT devices, NFC scans, doorbells, BLE buttons, or other event sources.
-
-## Requirements
-
-- Home Assistant 2026.11 or newer
-- Administrator access to configure Event2Action and edit maps
-- Modern web browser for the Lovelace card
-- At least one event source:
-  - RF433 source that fires Home Assistant events named `esphome.rf433`
-  - Zigbee devices using ZHA, which emit `zha_event`
-
-## Installation
-
-Event2Action is now an integration with a bundled card. Do not install the old YAML package or a separate copy of the card.
-
-1. For this development version, copy `custom_components/event2action/` (including its `frontend/` folder) into `/config/custom_components/event2action/`.
+1. Copy `custom_components/event2action/`, including `frontend/`, to `/config/custom_components/event2action/`.
 2. Restart Home Assistant.
-3. Open **Settings → Devices & services → Add integration → Event2Action** and complete setup.
-4. Reload the browser. The integration automatically loads the bundled card; no dashboard resource entry is required. Its `brand/` folder supplies the integration icon.
-5. Open **Event2Action** in the sidebar. Its full-page learning interface is created automatically; no dashboard view is required.
+3. Add **Event2Action** under **Settings → Devices & services → Add integration**.
+4. Reload the browser and open **Event2Action** in the sidebar.
 
-Optionally, add the card to a dashboard if you want a separate view or custom card configuration:
-
-```yaml
-type: custom:event2action-learning-card
-```
-
-The automatic sidebar page uses default card options; existing dashboard cards retain their own configuration. Use a dedicated panel view for a customized dashboard card if desired. The integration runs independently of whether its card is open. The card's storage/learning API requires an administrator account.
-
-For HACS/Marketplace, this repository must be installed as an **Integration**, rather than Dashboard. Its existing dashboard catalog listing does not change category automatically; publisher/catalog changes remain necessary. Manual installation above works independently of that listing.
-
-### Upgrade from the YAML/MQTT version
-
-1. Export the current map to JSON using the old card. Keep that file and any custom dashboard card configuration. A Home Assistant backup is recommended.
-2. Remove `/config/packages/event2action.yaml` from the packages include and remove the old standalone card installation and resource reference.
-3. Restart Home Assistant to stop the old runtime **before** installing the integration.
-4. Install and set up the integration as above, then use **Import Map**. Verify the mapping count and test representative buttons.
-
-**Old session and step backups do not transfer. Blocking duration starts at 60 seconds.** New undo history is created by the integration. Learning starts off with no active block. Keep the original export for rollback.
-
-Keep MQTT if other integrations use it, and keep the package include if other packages use it. External automations that reference old helpers or `script.temporary_toggle` need updating. Custom adapters firing `event2action_bus` continue to work.
-
-For rollback, disable/remove the integration and restart first, restore the previous package/card version and resource, restart, and import your original JSON if needed. This restores the exported snapshot, not subsequent edits.
-
-### Storage
-
-Maps, settings, and fresh undo snapshots are stored in `/config/.storage/event2action.maps` through Home Assistant's versioned Store API. Do not edit this file manually. Maps are loaded into memory at setup; button presses do not access disk. Saves are acknowledged only after disk verification. JSON export/import remains the portable backup path.
-
-When several entries share the same protocol and code, the first active entry in map order executes. Inactive entries are skipped; if none are active, no action runs.
-
-Repeated events mapped to the same toggle action within the configured interval (500 ms by default) are ignored for action execution, preventing radio repeats from toggling a device on and immediately off. The window uses event arrival time and does not delay other mappings. Repeated events remain visible for learning; non-toggle actions are unaffected.
-
-### Shared learning and blocking
-
-Learning mode and event blocking are shared across all Event2Action cards, including the sidebar page and dashboard views. Switching views keeps both states in sync. A learning session captures its backup once, even when multiple cards are open. Unsaved editor drafts remain local to each card; save before changing views. Learning starts off after an HA restart.
-
-With **Auto unblock** enabled on the last card to disconnect, the backend unblocks after a 3-second grace period if no card reconnects. Switching to another Event2Action view during that period preserves the block. Closing one of several cards does not unblock the others; the configured blocking timer still expires normally.
-
-### Runtime settings
-
-**Enable built-in ESPHome RF433 adapter** and **Enable built-in ZHA adapter** are enabled by default. Under **Settings → Devices & services → Event2Action → Configure**, turn either adapter off independently to stop forwarding its source events to Event2Action. Changes apply immediately and persist across restarts. Custom events sent directly to `event2action_bus` continue to work. Disable the corresponding built-in adapter before enabling a replacement YAML adapter to avoid duplicate events.
-
-**Show in sidebar** is enabled by default. Turn it off under **Settings → Devices & services → Event2Action → Configure** to hide the sidebar entry immediately. The integration keeps running, existing dashboard cards keep working, and administrators can still open `/event2action-learning` directly.
-
-Open **Settings → Devices & services → Event2Action → Configure** to set **Toggle repeat suppression (ms)**. The default is **500**; **0** disables suppression. Changes apply immediately without a restart. The option is stored with the integration configuration, separately from map JSON exports.
-
-## Event Source Expectations
-
-### RF433
-
-The RF433 event adapter listens to `esphome.rf433` by default. Change **RF433 event name** in Event2Action settings to use another source event with the same payload format. Changes replace the listener immediately and persist across restarts. Existing protocol/code mappings remain valid. Blank names, `*`, `event2action_bus`, and `zha_event` are rejected to prevent loops or overlapping adapters.
-
-The expected event data looks like:
-
-```json
-{
-  "protocol": 1,
-  "code": "1234567",
-  "command": "A"
-}
-```
-
-`protocol` may also be provided as `proto`. The adapter normalizes these fields into `device_ieee`, `proto`, `code`, `command`, `source`, and `origin_event_type`.
-
-### ZHA
-
-The ZHA event adapter listens for `zha_event` and derives a stable code from the full device IEEE address (with `:` or `-` separators removed), endpoint, and command. It supports short, double, and long press style commands. Because this format replaces the earlier shortened IEEE suffix, existing ZHA mappings created with the old format must be migrated or learned again.
-
-### Migrating from v0.1.3-beta
-
-Use the standalone migration tool for existing v0.1.3-beta maps. See [migration/README.md](migration/README.md) for the procedure. The migration utility is separate from the card UI and produces a new JSON file for review and import.
-
-## Usage
-
-1. Enable learning mode in the Event2Action card.
-2. Press a button or fire a test event.
-3. Optionally enter a unique Friendly name, intended to support future functionality enhancements.
-4. Pick the target entity and service.
-5. Save the mapping.
-6. Disable learning mode and test the button.
-
-For detailed editor behavior, backup/restore, import/export, and service data examples, see [e2a-mapping-editor-reference.md](e2a-mapping-editor-reference.md).
-
-### Optional Script Targets
-
-Event2Action can call any Home Assistant script. For example, the RF433 sniffer project [`Dschuli/rf433-esphome-sniffer`](https://github.com/Dschuli/rf433-esphome-sniffer) includes dimmer-control support that can provide a `script.dimmer_control` service target for handheld remote dimming. In that setup, map a learned button to `script.turn_on`, target `script.dimmer_control`, and pass service data such as:
-
-```json
-{
-  "light_entity": "light.living_room",
-  "steps": 5,
-  "bounce_at_top": false
-}
-```
-
-That script is not bundled here; this repository only stores and executes the mapping.
-
-## Testing Without Hardware
-
-Open Home Assistant Developer Tools -> Events and fire an `esphome.rf433` event:
-
-```json
-{
-  "protocol": 1,
-  "code": "111111111",
-  "command": "test"
-}
-```
-
-This exercises the RF433 event adapter and the shared runtime flow without requiring a physical RF source.
-
-## Configuration
-
-Open the dashboard card configuration editor to customize the user-facing options:
-
-- Supported entity domains
-- Custom common service data dropdown entries
-- Prefilled service data by entity/service pattern for custom entities, e.g. scripts
-- Auto-unblock behavior
-- Logging level
-
-Example YAML:
+The integration loads the bundled card automatically. To add a dashboard card, use:
 
 ```yaml
 type: custom:event2action-learning-card
-entity_domain_list:
-  - switch
-  - light
-  - cover
-  - script
-  - automation
-auto_unblock: true
-log_level: 2
-custom_common_service_data_keys:
-  "*dimmer_control|script.turn_on":
-    - label: light_entity
-      value: light_entity
-      default: ""
-prefill_service_data:
-  "*dimmer_control|script.turn_on": '{"light_entity":" ","steps":5,"bounce_at_top":false}'
 ```
 
-The card editor groups **Custom common service data keys** and **Prefill service data** into collapsible sections. Both start collapsed and remember their expanded state in the same browser.
+For this development branch, use the manual installation above. HACS distribution is moving from Dashboard to Integration, and the catalog entry still requires migration.
 
-Card options remain in dashboard configuration. The runtime blocking duration is stored by the integration. No MQTT topics or helper sensor names need configuring.
+<details>
+<summary>Upgrade from the YAML/MQTT version</summary>
+
+1. Export your map from the old card. Keep your custom card configuration and a Home Assistant backup.
+2. Remove the old `packages/event2action.yaml` include and standalone card resource.
+3. Restart Home Assistant to stop the old runtime, then install the integration.
+4. Select **Import Map** and test representative buttons.
+
+Old undo backups do not transfer. Blocking duration starts at 60 seconds, and learning starts off. Keep MQTT and package includes used by other integrations. Automations referencing old helpers or `script.temporary_toggle` need updating.
+
+Maps from **v0.1.3-beta** need conversion before import. [Migration guide](migration/README.md)
+
+To roll back, remove the integration and restart, restore the previous package and card resource, restart again, and import the original export.
+
+</details>
+
+## Configure
+
+**Card settings** in the sidebar header opens the Learning Card editor. Configure entity domains, automatic unblocking, logging, service data suggestions, and prefilled service data. Sidebar card settings are saved in Home Assistant. Dashboard cards have their own configuration through the dashboard editor.
+
+**Integration settings → Configure** opens Event2Action's runtime options. The same screen is available under **Settings → Devices & services → Event2Action**.
+
+| Setting | Purpose |
+| --- | --- |
+| ESPHome RF433 / ZHA adapters | Enable or disable each built-in adapter. Disable one before enabling a replacement for the same events. |
+| Show in sidebar | Show or hide the entry. The page remains at `/event2action-learning`. |
+| RF433 event name | Defaults to `esphome.rf433`. Change it for a sniffer using the same payload format under another event name. |
+| Toggle repeat suppression | Ignore rapid repeats of the same toggle mapping. Default 500 ms; set to 0 to disable. |
+
+Integration settings apply immediately. Select **Adapter examples** from the card or integration settings for source setup.
+
+## Everyday use
+
+Use **Block events** while learning if existing mappings could cause unwanted actions. Learning and blocking are independent controls. Save a mapping before switching views, as unsaved drafts belong to the open card.
+
+With **Auto unblock** enabled, closing the last card clears the block after a three-second grace period. Switching between Event2Action views during that time keeps it active. The blocking timer also expires normally.
+
+The first enabled mapping for a protocol/code pair runs. Toggle repeat suppression prevents repeated radio messages from immediately toggling a device back. Other actions and learning continue to receive repeats.
+
+Export maps as JSON for portable backups. The integration stores maps and undo snapshots in `/config/.storage/event2action.maps`; edit them through the UI.
+
+For richer actions, map a button to a script. The RF433 sniffer project includes an optional dimmer-control script. [Dimmer script](https://github.com/Dschuli/rf433-esphome-sniffer/tree/main/dimmer_control)
 
 ## Troubleshooting
 
-- **Integration unavailable:** confirm Event2Action is configured under Devices & services, use an administrator account, and reload the browser after setup.
-- **Card missing or old UI:** remove old `/hacsfiles/` or `/local/` Event2Action resource references, then refresh the browser. The integration serves `/event2action/event2action-learning-card.js` automatically.
-- **No events:** listen for `event2action_bus` in Developer Tools and test `esphome.rf433` or `zha_event`. Custom adapters must supply stable string `proto` and `code` values.
-- **No action:** check the map entry is active, the target/service exists, and events are unblocked. Review Home Assistant logs for Event2Action errors.
-- **Import rejected:** the error identifies the entry and field. Proto/code must be nonempty strings; active entries need valid target/service fields, and service data must be an object. Older v0.1.3-beta maps require the separate conversion tool.
-- **Save failed:** the previous map remains active. Check storage permissions/free space. Keep the draft and retry after resolving the error.
-- **Another session changed the map:** reload the card and review the newer data before saving.
+- **Card missing or outdated** — Remove old `/hacsfiles/` or `/local/` Event2Action resource entries and refresh the browser.
+- **No incoming event** — Check your source integration, then listen for `event2action_bus` in Developer Tools → Events. Follow your source's adapter guide.
+- **No action** — Check that the mapping is enabled, events are unblocked, and the target entity and action exist.
+- **Import rejected** — Follow the reported entry/field error. Older v0.1.3-beta maps need conversion first.
+- **Save failed** — Check HA storage permissions, free space, and logs, then retry. The previous map remains active.
+- **Another session changed the map** — Reload and review the newer data before saving.
+
+For a hardware-free test, fire `esphome.rf433` in Developer Tools → Events with `{"protocol":1,"code":"111111111","command":"test"}`. Use your configured RF433 event name if you changed it.
+
+## Documentation
+
+- [Quick start](QUICKSTART.md) — Installation and your first mapping.
+- [Adapter examples](examples/adapters/EXAMPLES_README.md) — Supported sources, device setup, and custom adapters.
+- [Mapping editor reference](e2a-mapping-editor-reference.md) — Editor controls, service data, and import/export.
 
 ## Development and project structure
 

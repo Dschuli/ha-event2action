@@ -18,7 +18,7 @@ Old session and step backups do not transfer. Blocking duration resets to 60 sec
 3. Select **Settings → Devices & services → Add integration → Event2Action**.
 4. Reload the browser and open **Event2Action** in the sidebar. The full-page learning card is created automatically.
 
-A manual dashboard card is optional, for a separate view or custom card settings:
+You can configure the sidebar card through **Card settings** in its header. A dashboard card is optional:
 
 ```yaml
 type: custom:event2action-learning-card
@@ -49,13 +49,9 @@ Without hardware, fire `esphome.rf433` in Developer Tools → Events:
 
 RF433 and ZHA adapters are built in. Custom UI/YAML automations can fire `event2action_bus` with string `proto` and `code` values; no Python adapter code is required.
 
-For another source, copy the inactive [custom adapter YAML](examples/adapters/custom-event-adapter.yaml) and follow its [guide](examples/adapters/README.md). Do not duplicate the built-in RF433/ZHA adapters.
+For another event source, choose an adapter from the [examples guide](examples/adapters/EXAMPLES_README.md). It covers Zigbee2MQTT, Matter, RF bridges, Wi-Fi and Bluetooth buttons, and custom events. Copy-and-edit examples need hardware testing.
 
-For Zigbee2MQTT remotes publishing JSON `action` messages, [example YAML code is provided](examples/adapters/zigbee2mqtt-event-adapter.yaml). Enable `mqtt.include_device_information: true` in Zigbee2MQTT, paste the example into a new automation, and set only the remote's MQTT topic. Its IEEE address is taken from `device.ieeeAddr` automatically. Follow the guide's retained-message precautions before enabling it.
-
-For Matter remotes exposed as `event.*` entities, use the [Matter YAML example](examples/adapters/matter-event-adapter.yaml) and set the button entity IDs. **Both Z2M and Matter examples need hardware testing; the author does not have those devices.** See the adapter guide for limitations and test-report instructions.
-
-You can also open the guide through **Adapter examples** in the Event2Action sidebar page header. The link opens GitHub in a new tab; examples are not activated automatically.
+The guide is also available through **Adapter examples** in the card header and integration settings.
 
 Maps and new undo snapshots persist through the HA Store API in `.storage/event2action.maps`; button execution reads memory. Do not edit that file directly. Use JSON export for a portable map backup.
 

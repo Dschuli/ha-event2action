@@ -48,7 +48,7 @@ actions:
            and (trigger.to_state.attributes.button | string | trim | length) > 0
            else '' }}
 
-  # 2. Forward to Event2Action. Never put the changing event timestamp in code.
+  # 2. Forward the button action to Event2Action.
   - event: event2action_bus
     event_data:
       proto: matter

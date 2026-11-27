@@ -15,7 +15,7 @@
     "step": {
       "init": {
         "title": "Event2Action settings",
-        "description": "Enable or disable the built-in ESPHome RF433 and ZHA adapters independently. Show or hide the Event2Action sidebar entry; the page remains accessible at /event2action-learning when hidden. Toggle repeat suppression ignores repeated events for the same toggle mapping within the interval below; 0 disables suppression. Changes apply immediately.\n\nFor additional event sources, see [Adapter examples and setup guide](https://github.com/Dschuli/ha-event2action/tree/integration-migration/examples/adapters) (opens GitHub).\n\nRF433 event name defaults to esphome.rf433. Custom names must provide the same protocol/proto and code payload fields; changing the name preserves existing mappings.",
+        "description": "Enable or disable the built-in ESPHome RF433 and ZHA adapters independently. Show or hide the Event2Action sidebar entry; the page remains accessible at /event2action-learning when hidden. Toggle repeat suppression ignores repeated events for the same toggle mapping within the interval below; 0 disables suppression. Changes apply immediately.\n\nFor additional event sources, see [Adapter examples and setup guide](https://github.com/Dschuli/ha-event2action/blob/integration-migration/examples/adapters/EXAMPLES_README.md) (opens GitHub).\n\nRF433 event name defaults to esphome.rf433. Custom names must provide the same protocol/proto and code payload fields; changing the name preserves existing mappings.",
         "data": {
           "show_in_sidebar": "Show in sidebar",
           "rf433_enabled": "Enable built-in ESPHome RF433 adapter",
