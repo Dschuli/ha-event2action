@@ -42,10 +42,12 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 
 | Event source | Support |
 |---|---|
-| RF433 remotes and wall switches via ESPHome | ✅ Built-in adapter |
+| RF433 remotes via ESPHome (RC Switch), e.g. [rf433-esphome-sniffer](https://github.com/Dschuli/rf433-esphome-sniffer) | ✅ Built-in adapter provided |
 | Zigbee buttons and scene switches via ZHA | ✅ Built-in adapter |
 | Zigbee buttons and scene switches via Zigbee2MQTT | [Example YAML code provided](examples/adapters/zigbee2mqtt-event-adapter.yaml) \* |
 | Matter buttons and remotes exposed as HA event entities | [Example YAML code provided](examples/adapters/matter-event-adapter.yaml) \* |
+| Sonoff RF Bridge running Tasmota (decoded RF codes via MQTT) | [Example YAML code provided](examples/adapters/tasmota-rf-bridge-event-adapter.yaml) \* |
+| OpenMQTTGateway with RCSwitch (decoded RF codes via MQTT) | [Example YAML code provided](examples/adapters/openmqttgateway-rcswitch-event-adapter.yaml) \* |
 | Other MQTT messages | Custom adapter required |
 | ESPHome custom events | Custom adapter required |
 | IR receivers | Custom adapter required (depends on receiver/event format) |
@@ -53,7 +55,7 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 
 **Built-in adapter** means no additional automation is needed. **Example YAML code provided** means copy the supplied automation and set its device-specific values. **Custom adapter required** means adapt the [generic template](examples/adapters/custom-event-adapter.yaml) or write an automation for your source's payload. These are setup requirements, not different processing modes: every adapter sends the same normalized `event2action_bus` event. Examples are not automatically installed or hardware-verified for every device.
 
-\* **Hardware testing needed:** The author does not have Zigbee2MQTT remotes or Matter buttons/remotes to test these examples. They are based on the documented interfaces and checked for YAML/template behavior, but are not verified on physical devices. Test reports and corrections are welcome via [GitHub issues](https://github.com/Dschuli/ha-event2action/issues/new).
+\* **Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, and OpenMQTTGateway RCSwitch examples need testing on physical devices. They are based on the documented interfaces and checked for YAML/template behavior, but are not verified on physical devices. Test reports and corrections are welcome via [GitHub issues](https://github.com/Dschuli/ha-event2action/issues/new).
 
 A **custom event adapter** can be a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The integration includes adapters for `esphome.rf433` and `zha_event`. Custom adapters can still fire `event2action_bus` from UI/YAML automations without Python code.
 
@@ -68,6 +70,10 @@ The disabled [ESPHome RF433 YAML example](examples/adapters/esphome-rf433-event-
 For Zigbee2MQTT, use the [copy-and-edit YAML automation](examples/adapters/zigbee2mqtt-event-adapter.yaml): enable `mqtt.include_device_information: true` in Zigbee2MQTT, enter only the remote's exact MQTT topic in the automation, then enable it. The adapter reads the IEEE address from `device.ieeeAddr` automatically. It handles all nonempty JSON `action` values without a per-button list. MQTT is used only for incoming events; map storage stays in HA. See the [adapter guide](examples/adapters/README.md#zigbee2mqtt-remote-example) for prerequisites and retained-message handling.
 
 For Matter, the [event-entity YAML example](examples/adapters/matter-event-adapter.yaml) forwards button event types from selected `event.*` entities into Event2Action. It needs your entity IDs and an already working HA Matter setup; Thread devices also need a Thread border router. Both Matter and Z2M examples need hardware testing as noted above.
+
+For a Sonoff RF Bridge running Tasmota, use the [MQTT RF adapter example](examples/adapters/tasmota-rf-bridge-event-adapter.yaml) and [setup guide](examples/adapters/README.md#sonoff-rf-bridge--tasmota-example). It forwards decoded `RfReceived.Data` codes; change the MQTT topic to match your bridge.
+
+For OpenMQTTGateway with RCSwitch, use the [MQTT RF adapter example](examples/adapters/openmqttgateway-rcswitch-event-adapter.yaml) and [setup guide](examples/adapters/README.md#openmqttgateway-with-rcswitch-example). It forwards decoded JSON RF values with their protocol and bit length; change the MQTT receive topic to match your gateway.
 
 Need an adapter for another event source? The author offers help creating additional adapters. [Open a GitHub issue](https://github.com/Dschuli/ha-event2action/issues/new) with your event source/device, incoming event type, and an example payload with sensitive information removed.
 
@@ -152,6 +158,8 @@ Learning mode and event blocking are shared across all Event2Action cards, inclu
 With **Auto unblock** enabled on the last card to disconnect, the backend unblocks after a 3-second grace period if no card reconnects. Switching to another Event2Action view during that period preserves the block. Closing one of several cards does not unblock the others; the configured blocking timer still expires normally.
 
 ### Runtime settings
+
+**Enable built-in ESPHome RF433 adapter** and **Enable built-in ZHA adapter** are enabled by default. Under **Settings → Devices & services → Event2Action → Configure**, turn either adapter off independently to stop forwarding its source events to Event2Action. Changes apply immediately and persist across restarts. Custom events sent directly to `event2action_bus` continue to work. Disable the corresponding built-in adapter before enabling a replacement YAML adapter to avoid duplicate events.
 
 **Show in sidebar** is enabled by default. Turn it off under **Settings → Devices & services → Event2Action → Configure** to hide the sidebar entry immediately. The integration keeps running, existing dashboard cards keep working, and administrators can still open `/event2action-learning` directly.
 
