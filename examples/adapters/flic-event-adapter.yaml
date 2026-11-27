@@ -1,0 +1,77 @@
+# Paste into ONE new Home Assistant automation's YAML editor.
+# EXAMPLE NEEDS HARDWARE TESTING. Requires HA 2026.11+ and the native Flic
+# (flic_button) Bluetooth integration with working, paired Flic devices.
+# Replace the entity list with actual event.* entities from your Flic devices.
+# Flic 2/Twist have one button entity; Duo has separate big/small entities.
+# This file is not loaded automatically by Event2Action.
+
+alias: Event2Action Flic remote adapter (example)
+description: Forward discrete Flic 2, Duo, and Twist actions with a bounded set of codes.
+initial_state: false  # Enable deliberately; remove when ready to retain on/off state.
+
+variables:
+  enable_swipes: false  # Optional Duo swipe_left/right/up/down mappings.
+
+triggers:
+  - trigger: state
+    # REQUIRED: replace these placeholders with the actual event.* entity IDs
+    # of the Flic buttons you want to support. Remove every unused entry.
+    # Find them on each Flic device's page or in Developer Tools -> States.
+    # These are entity IDs, not event-bus names or press types such as click.
+    entity_id:
+      - event.your_flic_2_button
+      - event.your_flic_duo_big_button
+      - event.your_flic_duo_small_button
+      - event.your_flic_twist_button
+    to: null  # Watch event timestamps, excluding attribute-only updates.
+
+conditions:
+  # Ignore startup/restoration/availability recovery, including the first state
+  # without a prior valid timestamp. Press again after initial setup/recovery.
+  - condition: template
+    value_template: >-
+      {{ trigger.from_state is not none
+         and trigger.to_state is not none
+         and trigger.from_state.state not in ['unknown', 'unavailable', '']
+         and trigger.to_state.state not in ['unknown', 'unavailable', '']
+         and not trigger.from_state.attributes.get('restored', false)
+         and trigger.from_state.state != trigger.to_state.state
+         and (trigger.to_state.attributes.get('event_type') in
+              ['click', 'double_click', 'hold', 'rotate_clockwise',
+               'rotate_counter_clockwise', 'twist_increment', 'twist_decrement',
+               'push_twist_increment', 'push_twist_decrement']
+              or (enable_swipes and trigger.to_state.attributes.get('event_type') in
+                  ['swipe_left', 'swipe_right', 'swipe_up', 'swipe_down'])) }}
+
+actions:
+  - variables:
+      # Merge ordinary and push-twist rotation into two direction codes.
+      # Keep absolute position, angle, speed, and selector slots out of keys.
+      source_command: >-
+        {% set commands = {
+          'click': 'single_press', 'double_click': 'double_press', 'hold': 'hold',
+          'rotate_clockwise': 'rotate_right', 'twist_increment': 'rotate_right',
+          'push_twist_increment': 'rotate_right',
+          'rotate_counter_clockwise': 'rotate_left', 'twist_decrement': 'rotate_left',
+          'push_twist_decrement': 'rotate_left'
+        } %}
+        {{ commands.get(trigger.to_state.attributes.event_type,
+                        trigger.to_state.attributes.event_type) }}
+
+  - event: event2action_bus
+    event_data:
+      proto: flic
+      code: "{{ trigger.entity_id[6:] ~ '/' ~ source_command }}"
+      command: "{{ source_command }}"
+      # Display metadata contains the HA event entity ID.
+      device_ieee: "{{ trigger.entity_id }}"
+      # OPTIONAL diagnostics:
+      # source: flic
+      # origin_entity: "{{ trigger.entity_id }}"
+
+# Rotation events are forwarded as received, one action per event, regardless
+# of step count. Use step actions for dimming. Test fast turns for queue overflow.
+# Entity renames require updating this list and relearning affected mappings.
+# Avoid overlapping adapters for the same event entities.
+mode: queued
+max: 10

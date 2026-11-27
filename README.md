@@ -48,6 +48,9 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 | Matter buttons and remotes exposed as HA event entities | [Example YAML code provided](examples/adapters/matter-event-adapter.yaml) \* |
 | Sonoff RF Bridge running Tasmota (decoded RF codes via MQTT) | [Example YAML code provided](examples/adapters/tasmota-rf-bridge-event-adapter.yaml) \* |
 | OpenMQTTGateway with RCSwitch (decoded RF codes via MQTT) | [Example YAML code provided](examples/adapters/openmqttgateway-rcswitch-event-adapter.yaml) \* |
+| Shelly Button1 via the HA Shelly integration (Wi-Fi) | [Example YAML code provided](examples/adapters/shelly-button1-event-adapter.yaml) \* |
+| Shelly BLU RC Button 4 via BTHome (Bluetooth) | [Example YAML code provided](examples/adapters/shelly-blu-rc-button4-event-adapter.yaml) \* |
+| Flic 2, Duo, and Twist via the native Flic integration (Bluetooth) | [Example YAML code provided](examples/adapters/flic-event-adapter.yaml) \* |
 | Other MQTT messages | Custom adapter required |
 | ESPHome custom events | Custom adapter required |
 | IR receivers | Custom adapter required (depends on receiver/event format) |
@@ -55,7 +58,7 @@ Event2Action is the missing **button-learning layer for Home Assistant**. Use it
 
 **Built-in adapter** means no additional automation is needed. **Example YAML code provided** means copy the supplied automation and set its device-specific values. **Custom adapter required** means adapt the [generic template](examples/adapters/custom-event-adapter.yaml) or write an automation for your source's payload. These are setup requirements, not different processing modes: every adapter sends the same normalized `event2action_bus` event. Examples are not automatically installed or hardware-verified for every device.
 
-\* **Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, and OpenMQTTGateway RCSwitch examples need testing on physical devices. They are based on the documented interfaces and checked for YAML/template behavior, but are not verified on physical devices. Test reports and corrections are welcome via [GitHub issues](https://github.com/Dschuli/ha-event2action/issues/new).
+\* **Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, OpenMQTTGateway RCSwitch, Shelly Button1, Shelly BLU RC Button 4, and Flic examples need testing on physical devices. They are based on the documented interfaces and checked for YAML/template behavior, but are not verified on physical devices. Test reports and corrections are welcome via [GitHub issues](https://github.com/Dschuli/ha-event2action/issues/new).
 
 A **custom event adapter** can be a simple Home Assistant automation that converts a source event into Event2Action's normalized format. The integration includes adapters for `esphome.rf433` and `zha_event`. Custom adapters can still fire `event2action_bus` from UI/YAML automations without Python code.
 

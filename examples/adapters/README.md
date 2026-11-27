@@ -20,7 +20,68 @@ The RF433 example is also disabled and not loaded automatically. Do not enable i
 
 ## Create an adapter
 
-**Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, and OpenMQTTGateway RCSwitch examples (marked with an asterisk in the main README) have not been verified on physical devices. YAML and example transformations are checked locally. Please test before relying on them, and [report results or corrections](https://github.com/Dschuli/ha-event2action/issues/new) with your model, HA/source versions, and a redacted payload or event-entity state/attributes.
+**Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, OpenMQTTGateway RCSwitch, Shelly Button1, Shelly BLU RC Button 4, and Flic examples (marked with an asterisk in the main README) have not been verified on physical devices. YAML and example transformations are checked locally. Please test before relying on them, and [report results or corrections](https://github.com/Dschuli/ha-event2action/issues/new) with your model, HA/source versions, and a redacted payload or event-entity state/attributes.
+
+### Flic 2, Duo, and Twist Bluetooth example
+
+[flic-event-adapter.yaml](flic-event-adapter.yaml) covers the three models through Home Assistant's native `flic_button` integration, available from HA 2026.11. Pair the devices through that integration with working Bluetooth reception. The example reads the event entities supplied by that integration.
+
+1. Inspect each device's `event.*` entities in HA. Flic 2 and Twist each supply one button entity. Duo supplies separate big- and small-button entities.
+2. Paste the example into one new automation's YAML editor. Replace every placeholder in `triggers[0].entity_id` with the actual `event.*` entity ID of a Flic button you want to support, and remove unused entries. Find these IDs on the Flic device page or in Developer Tools → States. These are event entity IDs, rather than event-bus names or press types. One automation can cover several devices and models.
+3. Leave `enable_swipes: false` for a compact set of mappings. Set it to `true` to also forward Duo's four swipe directions.
+4. Save and deliberately enable the automation. Listen for `event2action_bus` and learn presses, holds, and rotation directions. Use real device events to test. Run actions has no state-trigger payload. Remove `initial_state: false` when ready to let HA remember the enabled state across restarts.
+
+Each event entity produces at most five default command codes: `single_press`, `double_press`, `hold`, `rotate_left`, and `rotate_right`. Flic 2 supplies the three press commands. Duo and Twist can also supply rotation. Swipes add at most four more commands per entity. Raw `click` and `double_click` become `single_press` and `double_press`. Clockwise/increment events become `rotate_right`; counter-clockwise/decrement events become `rotate_left`. Ordinary and push-twist rotations share those direction keys. Up/down and selector-change events are ignored. Angles, absolute positions, step counts, and speed never enter the mapping key.
+
+For example, entity `event.living_room_flic_twist_button` with a changed timestamp and `event_type: twist_increment` produces protocol `flic`, code `living_room_flic_twist_button/rotate_right`. The entity ID with its `event.` prefix removed separates devices and Duo buttons. Renaming an entity requires updating the trigger list and relearning affected mappings. `device_ieee` contains the full entity ID for display.
+
+Twist's configured mode determines the source rotation events. Default/Continuous modes expose increment/decrement events; Selector mode exposes clockwise/counter-clockwise events. Changing modes can also change the entity ID, so inspect and update the list afterwards. Rotation fires one mapped action per received event, independent of how many steps the event represents. Test fast turns, repeats, both Duo buttons, all enabled gestures, and mode changes on real hardware. Fast turns can exceed the example's automation queue or Event2Action's action queue.
+
+The guard ignores attribute-only changes, unknown/unavailable/restored state recovery, and the first update without a prior valid state. Press again after setup or recovery. This guard cannot remove every event queued or replayed by a device/integration on reconnect, so test reconnects for unwanted actions. Avoid overlapping adapters forwarding the same entities.
+
+References are [HA's Flic integration and event types](https://www.home-assistant.io/integrations/flic_button/), [HA's Flic event implementation](https://github.com/home-assistant/core/blob/dev/homeassistant/components/flic_button/event.py), and [Flic event constants](https://github.com/50ButtonsEach/pyflic-ble/blob/main/src/pyflic_ble/const.py). Hardware testing is still needed.
+
+### Shelly BLU RC Button 4 Bluetooth example
+
+[shelly-blu-rc-button4-event-adapter.yaml](shelly-blu-rc-button4-event-adapter.yaml) forwards `bthome_ble_event` button events from a Shelly BLU RC Button 4. Configure the remote through Home Assistant's BTHome integration with working Bluetooth reception, using a local adapter or an ESPHome Bluetooth proxy. Supply the bindkey during BTHome setup if encryption is enabled. For a dual-protocol model, use Bluetooth/BTHome mode with this example.
+
+1. Listen for `bthome_ble_event` in Developer Tools → Events. Press each of the four buttons and confirm the payload includes `address`, `event_class` (`button_1` through `button_4`), and `event_type`.
+2. Paste the example into one new automation's YAML editor and fill `variables.allowed_addresses` with the observed Bluetooth addresses of the remotes you want to support. Add one list entry per remote. Letter case is ignored. An empty list forwards nothing. The automation listens to BTHome events and immediately filters them to these addresses and the supported button actions.
+3. Save and deliberately enable the automation. Listen for `event2action_bus`, press each button, and learn its actions in Event2Action. Run actions has no source-event payload. Remove `initial_state: false` when ready to let HA remember the enabled state across restarts.
+4. Test all four buttons, repeated presses, double/triple/long presses, holds, simultaneous presses, and HA/Bluetooth reconnects. If any button fails to appear in the source events, resolve reception, firmware, or BTHome decoding before testing the adapter. A missing source event cannot create a mapping.
+
+Example incoming `bthome_ble_event` data:
+
+```json
+{"device_id":"ha_device_id","address":"AA:BB:CC:DD:EE:FF","event_class":"button_2","event_type":"double_press","event_properties":null}
+```
+
+The match key is protocol `bthome`, code `aabbccddeeff/button_2/double_press`. The full Bluetooth address is lowercased with colons removed. The button identifier and press type distinguish mappings. HA entity names and device-registry IDs are excluded from the key, keeping it stable across entity renames. `device_ieee` contains the Bluetooth address for display.
+
+The guard accepts `press`, `double_press`, `triple_press`, `long_press`, and `hold_press` on the four numbered button channels. Invalid/missing fields, other event classes, and unsupported press types are ignored. Firmware and HA versions determine which events appear. Hold events may repeat and should be mapped deliberately. The example forwards each event without additional debounce and treats simultaneous button events separately. It does not combine buttons into chords or implement continuous dimming. Keep one adapter per received event to avoid duplicate actions. One automation can cover several remotes through `allowed_addresses`; each remote has distinct mapping keys. The address list selects devices explicitly because the source event has no manufacturer/model field.
+
+References are the [HA BTHome setup guide](https://www.home-assistant.io/integrations/bthome/), [HA BTHome event payload implementation](https://github.com/home-assistant/core/blob/dev/homeassistant/components/bthome/__init__.py), [HA BTHome button event types](https://github.com/home-assistant/core/blob/dev/homeassistant/components/bthome/event.py), and [Shelly BLU RC Button 4 protocol documentation](https://shelly-api-docs.shelly.cloud/docs-ble/Devices/BLU/wall_us/). This example still needs physical hardware verification.
+
+### Shelly Button1 Wi-Fi example
+
+[shelly-button1-event-adapter.yaml](shelly-button1-event-adapter.yaml) forwards `shelly.click` events from the Wi-Fi Shelly Button1 through Home Assistant's Shelly integration. It supports `single`, `double`, `triple`, and `long` clicks.
+
+1. Add the Button1 to Home Assistant's Shelly integration and complete its Gen1 CoIoT setup as described in the HA documentation. Wake the battery-powered button during setup.
+2. In Developer Tools → Events, listen for `shelly.click` and press the button. Confirm `device`, `channel`, and `click_type` in the payload.
+3. Paste the example into one new automation's YAML editor, save, and deliberately enable it. It covers all Button1 devices by default. Uncomment the `event_data` device filter to select one button, using its exact observed device value.
+4. Listen for `event2action_bus` and learn each desired press type in Event2Action. Test repeated presses and reconnects with the real button. Run actions has no source-event payload. Remove `initial_state: false` when ready to let HA remember the automation's enabled state across restarts.
+
+Example incoming `shelly.click` data:
+
+```json
+{"device_id":"e09c64a22553484d804353ef97f6fcd6","device":"shellybutton1-A4C12A45174","channel":1,"click_type":"double","generation":1}
+```
+
+The resulting match key is protocol `shelly`, code `shellybutton1-a4c12a45174/1/double`. Device names are trimmed and lowercased, and channels are normalized to decimal integers. The device, channel, and press type distinguish mappings. `device_id` is unused, and `device_ieee` contains the normalized Shelly device name as display metadata. Missing or invalid fields, other Shelly models, and unsupported click types are ignored.
+
+One automation handles several Button1 devices with separate keys. Keep only one adapter forwarding each source event. The example forwards each received press without additional debounce. Changing the device identifier requires relearning affected mappings. Verify startup, wake-from-sleep, reconnects, and all four press types on physical hardware.
+
+References are the [HA Shelly event and Gen1 setup documentation](https://www.home-assistant.io/integrations/shelly/#events) and [Shelly Button1 API](https://shelly-api-docs.shelly.cloud/gen1/#shelly-button1).
 
 ### OpenMQTTGateway with RCSwitch example
 

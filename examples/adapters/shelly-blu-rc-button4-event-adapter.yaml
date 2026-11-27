@@ -1,0 +1,54 @@
+# Paste into ONE new Home Assistant automation's YAML editor.
+# EXAMPLE NEEDS HARDWARE TESTING. Requires working HA Bluetooth reception
+# (local adapter or ESPHome Bluetooth proxy) and the remote added to BTHome.
+# Fill allowed_addresses with the remotes' addresses from bthome_ble_event data.
+# Listen in Developer Tools -> Events while pressing each of the four buttons.
+# This example uses the remote's Bluetooth/BTHome mode.
+# Not loaded automatically by Event2Action. Avoid overlapping adapters.
+
+alias: Event2Action Shelly BLU RC Button 4 adapter (example)
+description: Forward four-button Bluetooth remote presses from HA's BTHome integration.
+initial_state: false  # Enable deliberately; remove when ready to retain on/off state.
+
+variables:
+  # Replace with your remotes' addresses. Letter case is ignored.
+  # An empty list forwards nothing. Add one entry per selected remote.
+  allowed_addresses:
+    - "AA:BB:CC:DD:EE:FF"
+    # - "11:22:33:44:55:66"
+
+triggers:
+  - trigger: event
+    event_type: bthome_ble_event
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.get('address') is string
+         and (trigger.event.data.address | lower) in (allowed_addresses | map('lower') | list)
+         and (trigger.event.data.address | regex_match('^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$'))
+         and trigger.event.data.get('event_class') in ['button_1', 'button_2', 'button_3', 'button_4']
+         and trigger.event.data.get('event_type') in ['press', 'double_press', 'triple_press', 'long_press', 'hold_press'] }}
+
+actions:
+  - variables:
+      source_device: "{{ trigger.event.data.address | lower | replace(':', '') }}"
+      source_button: "{{ trigger.event.data.event_class }}"
+      source_command: "{{ trigger.event.data.event_type }}"
+
+  - event: event2action_bus
+    event_data:
+      proto: bthome
+      code: "{{ source_device ~ '/' ~ source_button ~ '/' ~ source_command }}"
+      # Display metadata contains the Bluetooth address.
+      device_ieee: "{{ trigger.event.data.address }}"
+      command: "{{ source_command }}"
+      # OPTIONAL diagnostics:
+      # source: shelly_blu_rc_button4
+      # origin_event_type: bthome_ble_event
+      # raw: "{{ trigger.event.data }}"
+
+# Each button event is forwarded separately, including simultaneous presses.
+# Hold repeats are forwarded as received; map them deliberately.
+mode: queued
+max: 10

@@ -1,0 +1,49 @@
+# Paste into ONE new Home Assistant automation's YAML editor.
+# EXAMPLE NEEDS HARDWARE TESTING. Add the Wi-Fi Shelly Button1 through HA's
+# Shelly integration first, then verify real presses emit shelly.click events.
+# Handles Gen1 Shelly Button1 single/double/triple/long presses.
+# One automation can cover multiple Button1 devices without per-button edits.
+# This file is not installed or loaded automatically by Event2Action.
+# Do not run overlapping adapters forwarding the same button events.
+
+alias: Event2Action Shelly Button1 adapter (example)
+description: Forward Shelly Button1 Wi-Fi button events from HA's Shelly integration.
+initial_state: false  # Enable deliberately; remove when ready to retain on/off state.
+
+triggers:
+  - trigger: event
+    event_type: shelly.click
+    # OPTIONAL: restrict to one button using the exact observed device value.
+    # event_data:
+    #   device: shellybutton1-A4C12A45174
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.event.data.get('device') is string
+         and (trigger.event.data.device | trim | lower
+              | regex_match('^shellybutton1-[0-9a-f]+$'))
+         and (trigger.event.data.get('channel') | string | trim
+              | regex_match('^[0-9]+$'))
+         and trigger.event.data.get('click_type') in ['single', 'double', 'triple', 'long'] }}
+
+actions:
+  - variables:
+      source_device: "{{ trigger.event.data.device | trim | lower }}"
+      source_channel: "{{ trigger.event.data.channel | int }}"
+      source_command: "{{ trigger.event.data.click_type }}"
+
+  - event: event2action_bus
+    event_data:
+      proto: shelly
+      code: "{{ source_device ~ '/' ~ source_channel ~ '/' ~ source_command }}"
+      # Display metadata contains the Shelly device name, not an IEEE address.
+      device_ieee: "{{ source_device }}"
+      command: "{{ source_command }}"
+      # OPTIONAL diagnostics:
+      # source: shelly_button1
+      # origin_event_type: shelly.click
+      # raw: "{{ trigger.event.data }}"
+
+mode: queued
+max: 10
