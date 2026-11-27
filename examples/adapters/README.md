@@ -22,6 +22,26 @@ The RF433 example is also disabled and not loaded automatically. Do not enable i
 
 **Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, OpenMQTTGateway RCSwitch, Shelly Button1, Shelly BLU RC Button 4, and Flic examples (marked with an asterisk in the main README) have not been verified on physical devices. YAML and example transformations are checked locally. Please test before relying on them, and [report results or corrections](https://github.com/Dschuli/ha-event2action/issues/new) with your model, HA/source versions, and a redacted payload or event-entity state/attributes.
 
+### IKEA remote examples
+
+Choose the adapter according to how the remote is connected to Home Assistant.
+
+| Remote family | HA connection | Event2Action setup |
+| --- | --- | --- |
+| Zigbee remotes such as STYRBAR, RODRET, SOMRIG, and older TRÅDFRI models | ZHA | Enable Event2Action's built-in ZHA adapter and learn the button events. |
+| The same Zigbee remotes | Zigbee2MQTT | Copy [zigbee2mqtt-event-adapter.yaml](zigbee2mqtt-event-adapter.yaml) and follow the [Zigbee2MQTT setup](#zigbee2mqtt-remote-example). |
+| BILRESA dual-button or scroll-wheel remote | Matter over Thread | Copy [matter-event-adapter.yaml](matter-event-adapter.yaml) and follow the [Matter setup](#matter-remote-example). A working Thread border router is required. |
+
+For ZHA, listen for `zha_event` while pressing each button, then verify the normalized `event2action_bus` event and learn it in Event2Action. With the built-in adapter enabled, keep the ZHA reference YAML disabled to avoid duplicate actions.
+
+For Zigbee2MQTT, enter the remote's actual JSON MQTT topic in the example and enable device information as described in its setup guide. The remote's IEEE address and `action` string distinguish mappings. For example, a message with `device.ieeeAddr: "0x00158d0001234567"` and `action: "on"` produces protocol `zigbee2mqtt`, code `00158d0001234567/on`. This illustrates the transformation; inspect your remote's actual action strings before learning its buttons. Apply the guide's retained-message precautions.
+
+For BILRESA, inspect the remote's actual `event.*` entities and replace the Matter example's entity list with the buttons you want to use. For example, entity `event.bilresa_button_1` with `event_type: double_press` produces protocol `matter`, code `event.bilresa_button_1/double_press`, when no additional `button` attribute is present. Entity IDs and event types in this example are illustrative. Use the values exposed by your HA installation. The existing example preserves the actual event type and can include an additional button attribute when supplied.
+
+Test short, repeated, double, and long presses with your model. For the scroll-wheel BILRESA, inspect the events produced during rotation before mapping them. The Matter example forwards discrete event types; position, direction, or step-count information carried only in extra attributes may require adapting it. Continuous dimming behavior needs device-specific handling. These IKEA setups still need physical hardware verification.
+
+Device references include [STYRBAR actions](https://www.zigbee2mqtt.io/devices/E2001_E2002.html), [SOMRIG actions](https://www.zigbee2mqtt.io/devices/E2213.html), and [IKEA BILRESA Matter/Thread instructions](https://www.ikea.com/qa/en/manuals/bilresa-remote-control-white-smart-dual-button__AA-2646178-1-100.pdf).
+
 ### Flic 2, Duo, and Twist Bluetooth example
 
 [flic-event-adapter.yaml](flic-event-adapter.yaml) covers the three models through Home Assistant's native `flic_button` integration, available from HA 2026.11. Pair the devices through that integration with working Bluetooth reception. The example reads the event entities supplied by that integration.
