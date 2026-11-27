@@ -99,7 +99,7 @@ With **Auto unblock** enabled, closing the last card clears the block after a th
 
 The first enabled mapping for a protocol/code pair runs. Toggle repeat suppression prevents repeated radio messages from immediately toggling a device back. Other actions and learning continue to receive repeats.
 
-Export maps as JSON for portable backups. The integration stores maps and undo snapshots in `/config/.storage/event2action.maps`; edit them through the UI.
+Export maps as JSON for portable backups or bulk edits. To change several mappings at once, edit the exported file and reimport it; keep the original as a backup. The integration stores maps and undo snapshots in `/config/.storage/event2action.maps`; edit them through the UI.
 
 For richer actions, map a button to a script. The RF433 sniffer project includes an optional dimmer-control script. [Dimmer script](https://github.com/Dschuli/rf433-esphome-sniffer/tree/main/dimmer_control)
 
