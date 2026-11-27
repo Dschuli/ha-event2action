@@ -9,7 +9,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 ROOT = Path(__file__).resolve().parents[1]
 package = types.ModuleType("event2action_test")
@@ -197,6 +197,39 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     async def dispatch(self, data):
         self.runtime._receive(types.SimpleNamespace(data=data))
         await self.runtime._worker
+
+    async def test_builtin_adapter_switches_are_independent_and_apply_live(self):
+        self.hass.bus = types.SimpleNamespace(async_fire=Mock())
+        rf433 = types.SimpleNamespace(data={"proto": "1", "code": "42"})
+        zha = types.SimpleNamespace(data={
+            "device_ieee": "AA:BB", "endpoint_id": 1, "command": "press",
+        })
+        for rf433_enabled, zha_enabled in ((True, True), (False, True),
+                                            (True, False), (False, False), (True, True)):
+            self.runtime.set_adapters_enabled(
+                rf433_enabled=rf433_enabled, zha_enabled=zha_enabled,
+            )
+            self.hass.bus.async_fire.reset_mock()
+            self.runtime._rf433(rf433)
+            self.runtime._zha(zha)
+            sources = [call.args[1]["source"] for call in self.hass.bus.async_fire.call_args_list]
+            self.assertEqual(sources, (["rf433"] if rf433_enabled else [])
+                             + (["zha"] if zha_enabled else []))
+
+    async def test_disabled_builtin_adapters_preserve_custom_bus(self):
+        self.runtime.set_adapters_enabled(rf433_enabled=False, zha_enabled=False)
+        self.storage.data["runtime"]["map"] = [mapping()]
+        await self.dispatch({"proto": "1", "code": "42"})
+        self.hass.services.async_call.assert_awaited_once()
+
+    def test_builtin_adapters_default_to_enabled_and_accept_saved_options(self):
+        self.assertTrue(self.runtime.rf433_enabled)
+        self.assertTrue(self.runtime.zha_enabled)
+        runtime = runtime_module.Runtime(
+            self.hass, self.storage, rf433_enabled=False, zha_enabled=False,
+        )
+        self.assertFalse(runtime.rf433_enabled)
+        self.assertFalse(runtime.zha_enabled)
 
     async def test_match_ignores_device_and_command(self):
         self.storage.data["runtime"]["map"] = [mapping()]

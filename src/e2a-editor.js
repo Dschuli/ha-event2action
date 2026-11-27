@@ -423,6 +423,10 @@ export class E2AEditor extends LitElement {
   // Change Handlers (Internal State)
   // ========================================
 
+  setActive(value) {
+    this._change("active", value);
+  }
+
   _change(field, value) {
     // If entity domain changes, clear service and service_data
     if (field === 'entity') {
@@ -629,13 +633,6 @@ export class E2AEditor extends LitElement {
               .label=${"Entity"}
             ></ha-selector>
 
-            <ha-formfield label="Active">
-              ${this._renderSwitch(
-          this._working?.active ?? true,
-          this.disabled,
-          e => this._change("active", e.target.checked)
-        )}
-            </ha-formfield>
           </div>
           <div class="row-1-2-1">
             <ha-selector

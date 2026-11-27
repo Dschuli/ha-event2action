@@ -1396,6 +1396,9 @@ class E2AEditor extends s {
     (_c = field.reportValidity) == null ? void 0 : _c.call(field);
     (_d = nativeInput == null ? void 0 : nativeInput.reportValidity) == null ? void 0 : _d.call(nativeInput);
   }
+  setActive(value) {
+    this._change("active", value);
+  }
   _change(field, value) {
     var _a2, _b, _c, _d;
     if (field === "entity") {
@@ -1536,7 +1539,7 @@ class E2AEditor extends s {
     };
   }
   render() {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n;
     if (!this.hass || !this.draft) {
       return x`<div>Loading... (hass: ${!!this.hass}, draft: ${!!this.draft})</div>`;
     }
@@ -1563,19 +1566,12 @@ class E2AEditor extends s {
               .label=${"Entity"}
             ></ha-selector>
 
-            <ha-formfield label="Active">
-              ${this._renderSwitch(
-      (_d = (_c = this._working) == null ? void 0 : _c.active) != null ? _d : true,
-      this.disabled,
-      (e2) => this._change("active", e2.target.checked)
-    )}
-            </ha-formfield>
           </div>
           <div class="row-1-2-1">
             <ha-selector
               .hass=${this.hass}
               .label=${"Service"}
-              .value=${(_f = (_e = this._working) == null ? void 0 : _e.service) != null ? _f : ""}
+              .value=${(_d = (_c = this._working) == null ? void 0 : _c.service) != null ? _d : ""}
               .selector=${{
       select: {
         options: (() => {
@@ -1743,7 +1739,7 @@ class E2AEditor extends s {
           <ha-selector
             .hass=${this.hass}
             .label=${"Remote"}
-            .value=${(_h = (_g = this._working) == null ? void 0 : _g.remote) != null ? _h : ""}
+            .value=${(_f = (_e = this._working) == null ? void 0 : _e.remote) != null ? _f : ""}
             .required=${false}
             .selector=${{
       select: {
@@ -1758,7 +1754,7 @@ class E2AEditor extends s {
           <ha-selector
             .hass=${this.hass}
             .label=${"Type"}
-            .value=${(_j = (_i = this._working) == null ? void 0 : _i.type) != null ? _j : ""}
+            .value=${(_h = (_g = this._working) == null ? void 0 : _g.type) != null ? _h : ""}
             .required=${false}
             .selector=${{
       select: {
@@ -1773,7 +1769,7 @@ class E2AEditor extends s {
           <ha-selector
             .hass=${this.hass}
             .label=${"Command"}
-            .value=${(_n = (_m = (_k = this._working) == null ? void 0 : _k.command) != null ? _m : (_l = this._working) == null ? void 0 : _l.button) != null ? _n : ""}
+            .value=${(_l = (_k = (_i = this._working) == null ? void 0 : _i.command) != null ? _k : (_j = this._working) == null ? void 0 : _j.button) != null ? _l : ""}
             .required=${false}
             .selector=${{
       select: {
@@ -1789,7 +1785,7 @@ class E2AEditor extends s {
           <ha-selector
             .hass=${this.hass}
             .label=${"Channel"}
-            .value=${(_p = (_o = this._working) == null ? void 0 : _o.channel) != null ? _p : ""}
+            .value=${(_n = (_m = this._working) == null ? void 0 : _m.channel) != null ? _n : ""}
             .required=${false}
             .selector=${{
       select: {
@@ -3437,7 +3433,7 @@ This replaces the current map. Legacy session and step backups are not imported.
     `;
   }
   render() {
-    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j;
+    var _a2, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
     if (!this.hass) {
       return x`
         <ha-card header="Event2Action Learning">
@@ -3525,16 +3521,28 @@ This replaces the current map. Legacy session and step backups are not imported.
 
         <!-- ================= EDIT MODE ================= -->
         ${isEditing ? x`
-          <p>
-            <b>Editing mapping for:</b><br />
-            Proto ${this._lockedPcc.proto},
-            Code ${this._lockedPcc.code}
-          </p>
+          <div class="mapping-heading">
+            <div class="mapping-details">
+              <b>Editing mapping for:</b>
+              <p class="mapping-identity">
+                Proto ${this._lockedPcc.proto},
+                Code ${this._lockedPcc.code}
+              </p>
+            </div>
+            <label class="mapping-enabled">
+              ${this._renderSwitch(
+      (_c = (_b = this._draft) == null ? void 0 : _b.active) != null ? _c : true,
+      false,
+      (e2) => this.renderRoot.querySelector("e2a-editor").setActive(e2.target.checked)
+    )}
+              <span>Enabled</span>
+            </label>
+          </div>
 
           <div class="row-4">
             <ha-input
               label="Friendly name (Optional)"
-              .value=${(_c = (_b = this._draft) == null ? void 0 : _b.name) != null ? _c : ""}
+              .value=${(_e = (_d = this._draft) == null ? void 0 : _d.name) != null ? _e : ""}
               @input=${this._onMappingNameChanged}>
             </ha-input>
           </div>
@@ -3547,7 +3555,7 @@ This replaces the current map. Legacy session and step backups are not imported.
             .customCommonServiceDataKeys=${this._customCommonServiceDataKeys}
             .prefillServiceData=${this._prefillServiceData}
             .existing=${!!match}
-            .externalDirty=${((_e = (_d = this._draft) == null ? void 0 : _d.name) != null ? _e : "") !== ((_g = (_f = this._original) == null ? void 0 : _f.name) != null ? _g : "")}
+            .externalDirty=${((_g = (_f = this._draft) == null ? void 0 : _f.name) != null ? _g : "") !== ((_i = (_h = this._original) == null ? void 0 : _h.name) != null ? _i : "")}
             .disabled=${false}
             @draft-changed=${this._onDraftChanged}
             @save=${this._onEditorSave}
@@ -3581,12 +3589,12 @@ This replaces the current map. Legacy session and step backups are not imported.
                   <li>Entity: ${nonEditMatch.entity}</li>
                   <li>Service: ${nonEditMatch.service}</li>
                   <li class="item ${this._hasValue(nonEditMatch.service_data) ? "" : "hidden"}">Service Data:
-                    <pre>${JSON.stringify((_h = nonEditMatch.service_data) != null ? _h : {}, null, 2)}</pre>
+                    <pre>${JSON.stringify((_j = nonEditMatch.service_data) != null ? _j : {}, null, 2)}</pre>
                   </li>
                   <li>Active: ${nonEditMatch.active ? "yes" : "no"}</li>
                   <li>Remote: ${nonEditMatch.remote}</li>
                   <li>Type: ${nonEditMatch.type}</li>
-                  <li>Command: ${(_j = (_i = nonEditMatch.command) != null ? _i : nonEditMatch.button) != null ? _j : ""}</li>
+                  <li>Command: ${(_l = (_k = nonEditMatch.command) != null ? _k : nonEditMatch.button) != null ? _l : ""}</li>
                   <li>Channel: ${nonEditMatch.channel}</li>
                 </ul>
               ` : x`
@@ -3620,6 +3628,39 @@ __publicField(E2ALearningCard, "styles", [
       position: relative;
       display: block;
       }
+    .mapping-heading {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: center;
+      justify-items: start;
+      text-align: left;
+      gap: var(--e2a-gap, 12px);
+      margin-top: 16px;
+      margin-bottom: 16px;
+    }
+    .mapping-details {
+      align-self: start;
+      min-width: 0;
+    }
+    .mapping-enabled {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin: 0;
+      line-height: normal;
+    }
+    .mapping-enabled ha-switch,
+    .mapping-enabled input {
+      display: block;
+      margin: 0;
+      align-self: center;
+    }
+    .mapping-identity {
+      margin: 4px 0 0;
+      overflow-wrap: anywhere;
+    }
     .toolbar {
       display: flex;
       flex-wrap: wrap;

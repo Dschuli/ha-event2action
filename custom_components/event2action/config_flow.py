@@ -8,7 +8,10 @@ try:
 except ImportError:
     import voluptuous as vol
 
-from .const import CONF_SHOW_IN_SIDEBAR, CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS, DOMAIN
+from .const import (
+    CONF_RF433_ENABLED, CONF_SHOW_IN_SIDEBAR, CONF_TOGGLE_REPEAT_MS,
+    CONF_ZHA_ENABLED, DEFAULT_TOGGLE_REPEAT_MS, DOMAIN,
+)
 
 
 class Event2ActionConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -41,11 +44,19 @@ class Event2ActionOptionsFlow(config_entries.OptionsFlow):
                     **self.config_entry.options,
                     CONF_TOGGLE_REPEAT_MS: value,
                     CONF_SHOW_IN_SIDEBAR: user_input.get(CONF_SHOW_IN_SIDEBAR, True),
+                    CONF_RF433_ENABLED: user_input.get(CONF_RF433_ENABLED, True),
+                    CONF_ZHA_ENABLED: user_input.get(CONF_ZHA_ENABLED, True),
                 })
             errors[CONF_TOGGLE_REPEAT_MS] = "invalid_toggle_repeat_ms"
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
+                vol.Required(CONF_RF433_ENABLED, default=self.config_entry.options.get(
+                    CONF_RF433_ENABLED, True
+                )): bool,
+                vol.Required(CONF_ZHA_ENABLED, default=self.config_entry.options.get(
+                    CONF_ZHA_ENABLED, True
+                )): bool,
                 vol.Required(CONF_SHOW_IN_SIDEBAR, default=self.config_entry.options.get(
                     CONF_SHOW_IN_SIDEBAR, True
                 )): bool,

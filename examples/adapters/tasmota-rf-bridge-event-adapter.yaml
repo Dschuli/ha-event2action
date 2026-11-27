@@ -1,0 +1,51 @@
+# Paste into ONE new Home Assistant automation's YAML editor.
+# EXAMPLE NEEDS HARDWARE TESTING. Requires Tasmota on a Sonoff RF Bridge
+# already receiving fixed RF codes and connected to HA's MQTT broker.
+# Replace the trigger topic with the exact topic observed for a real RF press;
+# tele/<Tasmota Topic>/RESULT assumes the default Tasmota FullTopic layout.
+# Handles decoded RfReceived.Data, not Portisch RfRaw.Data sniffing frames.
+# Ensure this topic is not retained and clear old retained messages before use:
+# HA's MQTT trigger cannot distinguish a retained replay from a live RF press.
+# Do not run overlapping adapters forwarding the same received RF messages.
+# This file is not loaded automatically by the integration.
+
+alias: Event2Action Tasmota Sonoff RF Bridge adapter (example)
+description: Forward decoded RF codes from a Tasmota Sonoff RF Bridge over MQTT.
+initial_state: false  # Enable deliberately; remove when ready to retain on/off state.
+
+triggers:
+  - trigger: mqtt
+    topic: "tele/YOUR_RF_BRIDGE_TOPIC/RESULT"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.payload_json is defined
+         and trigger.payload_json is mapping
+         and trigger.payload_json.get('RfReceived') is mapping
+         and trigger.payload_json.RfReceived.get('Data') is string
+         and (trigger.payload_json.RfReceived.Data | trim
+              | regex_match('^(0[xX])?[0-9a-fA-F]+$')) }}
+
+actions:
+  - variables:
+      # Keep leading zeros; do not convert the hexadecimal code to an integer.
+      source_code: >-
+        {{ trigger.payload_json.RfReceived.Data | trim | upper | replace('0X', '') }}
+
+  - event: event2action_bus
+    event_data:
+      proto: tasmota_rf_bridge
+      # Topic scopes codes to their receiving bridge, including custom FullTopic.
+      code: "{{ trigger.topic ~ '/' ~ source_code }}"
+      # Display metadata: this is the receiver topic, not a remote IEEE address.
+      device_ieee: "{{ trigger.topic }}"
+      command: "{{ source_code }}"
+      # OPTIONAL diagnostics:
+      # source: tasmota_rf_bridge
+      # origin_topic: "{{ trigger.topic }}"
+      # raw: "{{ trigger.payload_json }}"
+
+# Forward each received message; no generic debounce that might drop presses.
+mode: queued
+max: 10

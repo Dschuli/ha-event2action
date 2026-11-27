@@ -7,7 +7,10 @@ from homeassistant.components.frontend import add_extra_js_url, async_remove_pan
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.exceptions import ConfigEntryError
 
-from .const import CONF_SHOW_IN_SIDEBAR, CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS, DOMAIN, VERSION
+from .const import (
+    CONF_RF433_ENABLED, CONF_SHOW_IN_SIDEBAR, CONF_TOGGLE_REPEAT_MS,
+    CONF_ZHA_ENABLED, DEFAULT_TOGGLE_REPEAT_MS, DOMAIN, VERSION,
+)
 from .runtime import Runtime
 from .storage import MapStorage
 from .store import VerifiedStore
@@ -37,7 +40,11 @@ async def async_setup_entry(hass, entry):
         data["static_registered"] = True
     add_extra_js_url(hass, CARD_URL)
     await async_update_panel(hass, entry)
-    runtime = Runtime(hass, storage, entry.options.get(CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS))
+    runtime = Runtime(
+        hass, storage, entry.options.get(CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS),
+        rf433_enabled=entry.options.get(CONF_RF433_ENABLED, True),
+        zha_enabled=entry.options.get(CONF_ZHA_ENABLED, True),
+    )
     data["runtime"] = runtime
     runtime.start()
     entry.async_on_unload(entry.add_update_listener(async_update_options))
@@ -68,6 +75,10 @@ async def async_update_panel(hass, entry):
 async def async_update_options(hass, entry):
     runtime = hass.data[DOMAIN].get("runtime")
     if runtime is not None:
+        runtime.set_adapters_enabled(
+            rf433_enabled=entry.options.get(CONF_RF433_ENABLED, True),
+            zha_enabled=entry.options.get(CONF_ZHA_ENABLED, True),
+        )
         repeat_ms = entry.options.get(CONF_TOGGLE_REPEAT_MS, DEFAULT_TOGGLE_REPEAT_MS)
         if runtime.toggle_repeat_seconds != repeat_ms / 1000:
             runtime.set_toggle_repeat_ms(repeat_ms)

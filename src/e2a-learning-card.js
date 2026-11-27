@@ -880,11 +880,23 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
 
         <!-- ================= EDIT MODE ================= -->
         ${isEditing ? html`
-          <p>
-            <b>Editing mapping for:</b><br />
-            Proto ${this._lockedPcc.proto},
-            Code ${this._lockedPcc.code}
-          </p>
+          <div class="mapping-heading">
+            <div class="mapping-details">
+              <b>Editing mapping for:</b>
+              <p class="mapping-identity">
+                Proto ${this._lockedPcc.proto},
+                Code ${this._lockedPcc.code}
+              </p>
+            </div>
+            <label class="mapping-enabled">
+              ${this._renderSwitch(
+                this._draft?.active ?? true,
+                false,
+                e => this.renderRoot.querySelector("e2a-editor").setActive(e.target.checked)
+              )}
+              <span>Enabled</span>
+            </label>
+          </div>
 
           <div class="row-4">
             <ha-input
@@ -972,6 +984,39 @@ class E2ALearningCard extends BusyOverlayMixin(LitElement) {
       position: relative;
       display: block;
       }
+    .mapping-heading {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: center;
+      justify-items: start;
+      text-align: left;
+      gap: var(--e2a-gap, 12px);
+      margin-top: 16px;
+      margin-bottom: 16px;
+    }
+    .mapping-details {
+      align-self: start;
+      min-width: 0;
+    }
+    .mapping-enabled {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin: 0;
+      line-height: normal;
+    }
+    .mapping-enabled ha-switch,
+    .mapping-enabled input {
+      display: block;
+      margin: 0;
+      align-self: center;
+    }
+    .mapping-identity {
+      margin: 4px 0 0;
+      overflow-wrap: anywhere;
+    }
     .toolbar {
       display: flex;
       flex-wrap: wrap;

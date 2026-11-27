@@ -20,7 +20,51 @@ The RF433 example is also disabled and not loaded automatically. Do not enable i
 
 ## Create an adapter
 
-**Hardware testing needed:** The Zigbee2MQTT and Matter examples (marked with an asterisk in the main README) have not been verified on physical devices because the author does not have those devices. YAML and example transformations are checked locally. Please test before relying on them, and [report results or corrections](https://github.com/Dschuli/ha-event2action/issues/new) with your model, HA/source versions, and a redacted payload or event-entity state/attributes.
+**Hardware testing needed:** The Zigbee2MQTT, Matter, Tasmota Sonoff RF Bridge, and OpenMQTTGateway RCSwitch examples (marked with an asterisk in the main README) have not been verified on physical devices. YAML and example transformations are checked locally. Please test before relying on them, and [report results or corrections](https://github.com/Dschuli/ha-event2action/issues/new) with your model, HA/source versions, and a redacted payload or event-entity state/attributes.
+
+### OpenMQTTGateway with RCSwitch example
+
+[openmqttgateway-rcswitch-event-adapter.yaml](openmqttgateway-rcswitch-event-adapter.yaml) forwards decoded JSON messages from an OpenMQTTGateway RCSwitch receiver. Set up the gateway, compatible RF hardware, and Home Assistant MQTT integration first. This example does not handle RTL_433, RF2, raw RF frames, or plain scalar MQTT payloads.
+
+1. Listen to MQTT while pressing the remote. Confirm a JSON object containing `value`, `protocol`, and `length`, and copy its exact receive topic. The standard topic is `home/<gateway_name>/433toMQTT`; adjust for your configured base topic and gateway name. Do not subscribe to transmit command topics.
+2. Ensure RF messages on the selected topic are published without retain and clear any old retained message before enabling the adapter. HA's MQTT trigger cannot identify retained replays.
+3. Paste the example into one new automation's YAML editor, replace its trigger topic, save, and deliberately enable it. Remove `initial_state: false` when ready to let HA remember the enabled state across restarts.
+4. Listen for `event2action_bus`, press each button, and learn its code in Event2Action. Test repeated presses and MQTT/HA reconnects for false actions. Run actions has no MQTT trigger payload.
+
+Example input on `home/OpenMQTTGateway/433toMQTT`:
+
+```json
+{"value":1315156,"protocol":1,"length":24,"delay":317}
+```
+
+The match key is protocol `openmqttgateway_rcswitch`, code `home/OpenMQTTGateway/433toMQTT/1/24/1315156`. The key includes the receiver topic, RCSwitch protocol number, bit length, and decimal value. `delay` and raw timing data are excluded because reception timing varies. The fields accept decimal integers or digit strings and normalize leading zeros; missing/null/blank fields, booleans, fractions, negative values, invalid JSON, and non-object payloads are ignored. Protocol and length must be positive. A value of zero is accepted if published by the source.
+
+Use one receive topic per gateway; a single gateway can cover many remote buttons without per-button configuration. Some gateway configurations publish a value suffix such as `433toMQTT/1315156`; the example's unsuffixed subscription does not match these. Prefer the standard unsuffixed JSON topic when available. Otherwise subscribe to `home/YOUR_GATEWAY/433toMQTT/+` for value-suffixed JSON messages only, after inspecting actual payloads. The actual topic remains part of the match key, so changing the topic layout requires relearning mappings. Do not subscribe to both layouts if the gateway publishes the same reception on both.
+
+`device_ieee` contains the receiving topic as display metadata, not a remote IEEE address. These keys are separate from the ESPHome and Tasmota adapters. Avoid overlapping subscriptions and multiple receivers forwarding the same RF transmission. Received repeats are forwarded without extra debounce; gateway repeat filtering and RF compatibility depend on its configuration and firmware. Verify behavior with your actual remote and actions.
+
+References: [OpenMQTTGateway RCSwitch RF documentation](https://docs.openmqttgateway.com/use/rf#rcswitch-based-gateway), [Home Assistant integration and RF topic variants](https://docs.openmqttgateway.com/integrate/home_assistant.html), and [HA MQTT trigger](https://www.home-assistant.io/triggers/mqtt/).
+
+### Sonoff RF Bridge + Tasmota example
+
+[tasmota-rf-bridge-event-adapter.yaml](tasmota-rf-bridge-event-adapter.yaml) forwards decoded `RfReceived.Data` messages from a Sonoff RF Bridge running Tasmota. It requires a working bridge, RF reception, and Home Assistant MQTT integration. It does not flash or configure the bridge and does not handle Portisch `RfRaw.Data` frames, rolling codes, or every RF device/protocol.
+
+1. Listen to MQTT while pressing the real remote and copy the exact topic containing `RfReceived.Data`. With Tasmota's default FullTopic layout this is `tele/<Topic>/RESULT`; custom FullTopic settings may differ.
+2. Ensure RF messages on that topic are published without retain, and clear any old retained message before enabling the adapter. HA's YAML MQTT trigger cannot identify retained replays. Check any Tasmota rules or other publishers forwarding messages to this topic too.
+3. Paste the example into one new automation's YAML editor, replace the trigger topic, save, and deliberately enable it. Remove `initial_state: false` when ready to let HA remember its enabled state across restarts.
+4. Listen for `event2action_bus`, press each remote button, and learn the codes in Event2Action. Test MQTT/HA reconnects for false actions. Run actions has no MQTT trigger payload.
+
+Example input on `tele/rf_bridge/RESULT`:
+
+```json
+{"Time":"2026-01-01T12:00:00","RfReceived":{"Sync":9640,"Low":350,"High":950,"Data":"8D9EE7","RfKey":"None"}}
+```
+
+The resulting match key is protocol `tasmota_rf_bridge`, code `tele/rf_bridge/RESULT/8D9EE7`. Hex strings are trimmed and uppercased, an optional `0x` prefix is removed, and leading zeros are preserved. Non-JSON/non-object messages, missing or invalid `RfReceived.Data`, status messages, and raw sniffing frames are ignored. Timing fields, timestamps, and `RfKey` are not part of the key. The received RF data identifies the button; the bridge does not supply a separate remote IEEE address. `device_ieee` contains the receiver topic as display metadata.
+
+One bridge can receive many remotes without per-button configuration. The topic scopes the key to the receiving bridge: renaming its topic requires updating the automation and relearning mappings. If two bridges hear the same RF transmission, each may produce an event; restrict forwarding to one receiver for that transmission. Avoid overlapping adapter subscriptions or other automations forwarding the same messages. Repeated RF messages are forwarded without debounce; verify repeat behavior with your remote and actions. These keys are separate from the built-in ESPHome RF433 adapter's keys.
+
+References: [Tasmota Sonoff RF Bridge documentation](https://tasmota.github.io/docs/devices/Sonoff-RF-Bridge-433/), [Tasmota RF rules](https://tasmota.github.io/docs/Rules/), and [HA MQTT trigger](https://www.home-assistant.io/triggers/mqtt/).
 
 ### Matter remote example
 

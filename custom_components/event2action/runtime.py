@@ -38,7 +38,8 @@ def normalize_zha(data):
 
 
 class Runtime:
-    def __init__(self, hass, storage, toggle_repeat_ms=DEFAULT_TOGGLE_REPEAT_MS):
+    def __init__(self, hass, storage, toggle_repeat_ms=DEFAULT_TOGGLE_REPEAT_MS,
+                 *, rf433_enabled=True, zha_enabled=True):
         self.hass = hass
         self.storage = storage
         self.listeners = set()
@@ -56,6 +57,13 @@ class Runtime:
         self._queue = asyncio.Queue()
         self._last_toggle = {}
         self.set_toggle_repeat_ms(toggle_repeat_ms)
+        self.set_adapters_enabled(rf433_enabled=rf433_enabled, zha_enabled=zha_enabled)
+
+    @callback
+    def set_adapters_enabled(self, *, rf433_enabled, zha_enabled):
+        """Apply built-in adapter settings immediately, leaving the custom bus active."""
+        self.rf433_enabled = rf433_enabled
+        self.zha_enabled = zha_enabled
 
     @callback
     def set_toggle_repeat_ms(self, milliseconds):
@@ -134,10 +142,13 @@ class Runtime:
 
     @callback
     def _rf433(self, event):
-        self.hass.bus.async_fire(BUS_EVENT, normalize_rf433(event.data))
+        if self.rf433_enabled:
+            self.hass.bus.async_fire(BUS_EVENT, normalize_rf433(event.data))
 
     @callback
     def _zha(self, event):
+        if not self.zha_enabled:
+            return
         if (data := normalize_zha(event.data)) is not None:
             self.hass.bus.async_fire(BUS_EVENT, data)
 

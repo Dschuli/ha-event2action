@@ -61,7 +61,7 @@ A **custom event adapter** can be a simple Home Assistant automation that conver
 
 Start with the inactive [YAML adapter template](examples/adapters/custom-event-adapter.yaml) and its [setup and optional-feature guide](examples/adapters/README.md). It shows an incoming event, payload-to-code transformation, and outgoing bus event. The integration does not load or activate the example.
 
-In Home Assistant, select **Adapter examples** in the Event2Action sidebar page header to open the guide and YAML examples on GitHub in a new tab.
+In Home Assistant, open **Settings → Devices & services → Event2Action → Configure** and select **Adapter examples and setup guide** to view the guide and YAML examples on GitHub. The **Adapter examples** link is also available in the Event2Action sidebar page header.
 
 A disabled [working ZHA YAML example](examples/adapters/zha-event-adapter.yaml) demonstrates the same structure with real Zigbee/ZHA payloads and matches the built-in normalization. Keep it disabled alongside the integration's built-in ZHA adapter.
 

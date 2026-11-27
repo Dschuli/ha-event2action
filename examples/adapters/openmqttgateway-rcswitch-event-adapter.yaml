@@ -1,0 +1,57 @@
+# Paste into ONE new Home Assistant automation's YAML editor.
+# EXAMPLE NEEDS HARDWARE TESTING. Requires a working OpenMQTTGateway RCSwitch
+# receiver and Home Assistant's MQTT integration connected to the same broker.
+# Replace the trigger topic with the exact JSON receive topic seen on a press.
+# This example uses the standard, unsuffixed 433toMQTT topic, not MQTTto433
+# command topics, RTL_433, RF2, or raw RF frames. Use JSON output on the gateway.
+# Publish RF messages without retain and clear old retained messages first:
+# HA's MQTT trigger cannot distinguish a retained replay from a live RF press.
+# Do not run overlapping adapters forwarding the same received messages.
+# This file is not loaded automatically by the integration.
+
+alias: Event2Action OpenMQTTGateway RCSwitch adapter (example)
+description: Forward decoded RCSwitch RF messages from OpenMQTTGateway over MQTT.
+initial_state: false  # Enable deliberately; remove when ready to retain on/off state.
+
+triggers:
+  - trigger: mqtt
+    topic: "home/YOUR_GATEWAY/433toMQTT"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.payload_json is defined
+         and trigger.payload_json is mapping
+         and (trigger.payload_json.get('value') | string | trim
+              | regex_match('^[0-9]+$'))
+         and (trigger.payload_json.get('protocol') | string | trim
+              | regex_match('^[0-9]+$'))
+         and (trigger.payload_json.get('length') | string | trim
+              | regex_match('^[0-9]+$'))
+         and (trigger.payload_json.protocol | int) > 0
+         and (trigger.payload_json.length | int) > 0 }}
+
+actions:
+  - variables:
+      # Accept decimal integers or digit strings and normalize their formatting.
+      source_value: "{{ trigger.payload_json.value | int }}"
+      source_protocol: "{{ trigger.payload_json.protocol | int }}"
+      source_length: "{{ trigger.payload_json.length | int }}"
+
+  - event: event2action_bus
+    event_data:
+      proto: openmqttgateway_rcswitch
+      # Separate gateways, RCSwitch protocols, and bit lengths. Pulse timing
+      # (delay) varies between receptions and must not be part of the match key.
+      code: "{{ trigger.topic ~ '/' ~ source_protocol ~ '/' ~ source_length ~ '/' ~ source_value }}"
+      # Display metadata: receiver topic, not a remote IEEE address.
+      device_ieee: "{{ trigger.topic }}"
+      command: "{{ source_value }}"
+      # OPTIONAL diagnostics:
+      # source: openmqttgateway_rcswitch
+      # origin_topic: "{{ trigger.topic }}"
+      # raw: "{{ trigger.payload_json }}"
+
+# Forward each received message; no generic debounce that might drop presses.
+mode: queued
+max: 10
