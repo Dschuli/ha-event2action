@@ -22,6 +22,8 @@ Start with a working device in Home Assistant, then choose the adapter for its c
 
 \* **Hardware testing needed.** The copy-and-edit adapters have been checked for YAML and template behavior, but still need physical device testing. Test reports are welcome with your model, HA version, and a sample event. [Report results](https://github.com/Dschuli/ha-event2action/issues/new)
 
+The ESPHome RF433 sniffer covers many RCSwitch-compatible 433 MHz remotes, including models from Trust, Brennenstuhl, Intertechno, Elro, and similar systems. Compatibility depends on the model and protocol. See [rf433-esphome-sniffer](https://github.com/Dschuli/rf433-esphome-sniffer) for receiver setup.
+
 ## Install an example
 
 1. Set up the source integration and confirm button presses reach Home Assistant.

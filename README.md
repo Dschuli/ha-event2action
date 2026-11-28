@@ -41,7 +41,7 @@ Mappings and backups are stored locally in Home Assistant. MQTT is needed only f
 
 An adapter converts a button event into the code Event2Action learns. The examples guide has the full source list, IKEA guidance, and setup instructions. Copy-and-edit examples need testing on physical devices. [Browse adapter examples](examples/adapters/EXAMPLES_README.md)
 
-For ESPHome RF433, the author's sniffer project provides an ESP32/CC1101 receiver for RC Switch-compatible remotes. [rf433-esphome-sniffer](https://github.com/Dschuli/rf433-esphome-sniffer)
+For ESPHome RF433, the author's sniffer project provides an ESP32/CC1101 receiver covering many RCSwitch-compatible 433 MHz remotes, including models from Trust, Brennenstuhl, Intertechno, Elro, and similar systems. Compatibility depends on the model and protocol. [rf433-esphome-sniffer](https://github.com/Dschuli/rf433-esphome-sniffer)
 
 ## Install
 
